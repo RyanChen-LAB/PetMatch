@@ -9,7 +9,7 @@ st.set_page_config(page_title="PetMatch AI", page_icon="🐾", layout="centered"
 
 # ====== 🔑 API KEY 設定區 (請在此填入您的新 KEY) ======
 # 請將下方的 "貼上您的新KEY" 換成您的 API Key
-GOOGLE_API_KEY = st.secrets["AIzaSyDST7lRkMm6gXvs2BzB9W7nU_U05nPxtRc"]
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 # ===================================================
 
 # --- 2. 讀取 Excel ---
