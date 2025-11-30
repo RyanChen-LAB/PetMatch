@@ -14,6 +14,7 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Noto Sans TC', sans-serif; }
     .stApp { background-color: #F8F9FA; }
     
+    /* 頂部 Hero Section */
     .hero-container {
         background: linear-gradient(135deg, #2A9D8F 0%, #264653 100%);
         padding: 40px 20px;
@@ -26,6 +27,7 @@ st.markdown("""
     .hero-title { font-size: 2.5rem; font-weight: 700; margin: 0; }
     .hero-subtitle { font-size: 1.2rem; opacity: 0.9; margin-top: 10px; }
 
+    /* 卡片樣式 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -34,6 +36,7 @@ st.markdown("""
         border: 1px solid #E0E0E0;
     }
     
+    /* 按鈕美化 */
     .stButton > button {
         background-color: #2A9D8F;
         color: white;
@@ -50,6 +53,7 @@ st.markdown("""
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
     
+    /* 聊天框美化 */
     .stChatMessage {
         background-color: #ffffff;
         border-radius: 15px;
@@ -59,13 +63,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ====== 🔑 安全的 API KEY 讀取方式 ======
-# 程式會嘗試從 secrets 讀取，如果沒有設定，不會崩潰，而是會在稍後提示使用者
-if "GOOGLE_API_KEY" in st.secrets:
+# ====== 🔑 API KEY 設定區 (GitHub 安全版) ======
+# 這裡不需要填寫 Key！程式會自動去讀取 Streamlit Cloud 的設定
+try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-else:
-    GOOGLE_API_KEY = None
-# ======================================
+except:
+    # 只有在本機電腦跑，且沒有 secrets.toml 時，這裡才需要暫時填寫
+    # 上傳 GitHub 前請確保這裡是空的或註解掉
+    GOOGLE_API_KEY = "" 
+# ============================================
 
 # --- 資料讀取 ---
 @st.cache_data
@@ -83,11 +89,10 @@ HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 # --- AI 核心 ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY:
-        return "⚠️ 請設定 API Key (於 .streamlit/secrets.toml 或雲端後台)", "low", "動物", "動物醫院"
+        return "⚠️ 請檢查 API Key 設定 (Streamlit Secrets)", "low", "動物", "動物醫院"
     
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        # 為了穩定性，若 2.0 失敗可改回 gemini-1.5-flash
         model = genai.GenerativeModel('gemini-2.0-flash')
         
         system_prompt = f"""
@@ -115,7 +120,6 @@ def get_gemini_response(user_input):
         elif "URGENCY: MEDIUM" in text: urgency = "medium"
         
         clean_reply = text.split("RESPONSE:")[-1].split("ANIMAL_TYPE:")[0].strip()
-        
         animal_type = "特寵"
         if "ANIMAL_TYPE:" in text:
             animal_type = text.split("ANIMAL_TYPE:")[-1].split("SEARCH_KEYWORDS:")[0].strip()
@@ -124,12 +128,12 @@ def get_gemini_response(user_input):
             search_keywords = text.split("SEARCH_KEYWORDS:")[-1].strip()
 
         return clean_reply, urgency, animal_type, search_keywords
-    except Exception as e:
-        return f"連線錯誤: {str(e)}", "low", "動物", "動物醫院"
+    except:
+        return "連線錯誤 (請檢查 API Key 或額度)", "low", "動物", "動物醫院"
 
 # --- 每日知識 ---
 def get_daily_tip():
-    if not GOOGLE_API_KEY: return "請設定 API Key 以啟用此功能。"
+    if not GOOGLE_API_KEY: return "請設定 API Key 以啟用功能"
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
         model = genai.GenerativeModel('gemini-2.0-flash')
@@ -142,6 +146,7 @@ def get_daily_tip():
 # 🖥️ 介面主程式
 # ====================
 
+# 1. 頂部 Hero Section
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">🐾 PetMatch AI智慧寵心導航</div>
@@ -149,6 +154,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# 2. 分頁導航
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
 
 # --- TAB 1: 智能導航 ---
@@ -161,8 +167,11 @@ with tab_home:
             st.markdown("### 📍 目前位置")
             st.info("高雄市 (預設)")
             st.caption(f"資料庫醫院數：{len(HOSPITALS_DB)} 家")
+            st.markdown("---")
             if not GOOGLE_API_KEY:
-                st.error("⚠️ 未偵測到 API Key，AI 功能將無法使用。")
+                st.error("⚠️ 未偵測到 API Key，請至 Streamlit Cloud 設定 Secrets。")
+            else:
+                st.success("✅ AI 系統運作中")
             
     with col_main:
         if "messages" not in st.session_state:
@@ -209,6 +218,7 @@ with tab_home:
                     
                     components.html(m._repr_html_(), height=350)
 
+                    # --- 推薦醫院卡片 (修正連結) ---
                     if vip_hospitals:
                         st.subheader(f"🏆 推薦 {animal_type} 專科")
                         for h in vip_hospitals:
@@ -221,11 +231,14 @@ with tab_home:
                                     st.markdown(tags_html, unsafe_allow_html=True)
                                 with c2:
                                     st.write("")
-                                    link = f"http://googleusercontent.com/maps.google.com/maps?daddr={h['lat']},{h['lon']}&dirflg=d"
+                                    # ✅ 修正點：使用 Google Maps 官方標準導航連結
+                                    link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("")
 
+                    # 擴大搜尋按鈕 (修正連結)
                     st.markdown("#### 沒找到合適的？")
+                    # ✅ 修正點：使用 Google Maps 官方標準搜尋連結
                     gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 在 Google Maps 搜尋「{search_keywords}」", gmap_query, type="secondary")
 
@@ -271,5 +284,9 @@ with tab_about:
     st.markdown("""
     ### 關於 PetMatch
     我們致力於解決特殊寵物就醫資訊不透明的問題。
+    
+    - **精準導航**：連結專科醫院資料庫。
+    - **AI 分診**：減少飼主焦慮。
+    - **社群共享**：最新的衛教資訊。
     """)
     st.image("https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=800")
