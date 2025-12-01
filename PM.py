@@ -93,7 +93,7 @@ def get_gemini_response(user_input):
     
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         system_prompt = f"""
         Role: PetMatch Triage System.
@@ -149,8 +149,8 @@ def get_daily_tip():
 # 1. 頂部 Hero Section
 st.markdown("""
     <div class="hero-container">
-        <div class="hero-title">🐾 PetMatch AI智慧寵心導航</div>
-        <div class="hero-subtitle">專為 貓・狗・特寵 設計的 AI 醫療導航</div>
+        <div class="hero-title">🐾 PetMatch AI智慧寵心導航🧑🏻‍⚕️</div>
+        <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
