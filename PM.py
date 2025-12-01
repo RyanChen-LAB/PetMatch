@@ -3,6 +3,8 @@ import pandas as pd
 import google.generativeai as genai
 import folium
 import streamlit.components.v1 as components
+from streamlit_js_eval import get_geolocation # 記得安裝 pip install streamlit-js-eval
+from math import radians, cos, sin, asin, sqrt
 
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
@@ -14,7 +16,6 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Noto Sans TC', sans-serif; }
     .stApp { background-color: #F8F9FA; }
     
-    /* 頂部 Hero Section */
     .hero-container {
         background: linear-gradient(135deg, #2A9D8F 0%, #264653 100%);
         padding: 40px 20px;
@@ -27,7 +28,6 @@ st.markdown("""
     .hero-title { font-size: 2.5rem; font-weight: 700; margin: 0; }
     .hero-subtitle { font-size: 1.2rem; opacity: 0.9; margin-top: 10px; }
 
-    /* 卡片樣式 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -36,7 +36,6 @@ st.markdown("""
         border: 1px solid #E0E0E0;
     }
     
-    /* 按鈕美化 */
     .stButton > button {
         background-color: #2A9D8F;
         color: white;
@@ -50,10 +49,8 @@ st.markdown("""
     .stButton > button:hover {
         background-color: #21867a;
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
     
-    /* 聊天框美化 */
     .stChatMessage {
         background-color: #ffffff;
         border-radius: 15px;
@@ -63,15 +60,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ====== 🔑 API KEY 設定區 (GitHub 安全版) ======
-# 這裡不需要填寫 Key！程式會自動去讀取 Streamlit Cloud 的設定
+# ====== 🔑 API KEY 設定區 ======
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 except:
-    # 只有在本機電腦跑，且沒有 secrets.toml 時，這裡才需要暫時填寫
-    # 上傳 GitHub 前請確保這裡是空的或註解掉
     GOOGLE_API_KEY = "" 
-# ============================================
+# ==============================
+
+# --- 工具：計算距離 (Haversine Formula) ---
+def calculate_distance(lat1, lon1, lat2, lon2):
+    try:
+        lon1, lat1, lon2, lat2 = map(radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
+        dlon = lon2 - lon1 
+        dlat = lat2 - lat1 
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a)) 
+        r = 6371 # 地球半徑 (km)
+        return c * r
+    except:
+        return 9999
 
 # --- 資料讀取 ---
 @st.cache_data
@@ -89,7 +96,7 @@ HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 # --- AI 核心 ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY:
-        return "⚠️ 請檢查 API Key 設定 (Streamlit Secrets)", "low", "動物", "動物醫院"
+        return "⚠️ 請檢查 API Key 設定", "low", "動物", "動物醫院"
     
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
@@ -129,8 +136,7 @@ def get_gemini_response(user_input):
 
         return clean_reply, urgency, animal_type, search_keywords
     except Exception as e:
-        # 這行會把 Google 回傳的英文錯誤碼直接印在螢幕上
-        return f"系統偵測到詳細錯誤：{str(e)}", "low", "動物", "動物醫院"
+        return f"連線錯誤：{str(e)}", "low", "動物", "動物醫院"
 
 # --- 每日知識 ---
 def get_daily_tip():
@@ -147,7 +153,6 @@ def get_daily_tip():
 # 🖥️ 介面主程式
 # ====================
 
-# 1. 頂部 Hero Section
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">🐾 PetMatch AI智慧寵心導航🧑🏻‍⚕️</div>
@@ -155,28 +160,58 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 2. 分頁導航
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
 
 # --- TAB 1: 智能導航 ---
 with tab_home:
     col_main, col_side = st.columns([2, 1])
-    current_user_pos = {"lat": 22.6800, "lon": 120.3000} # 高雄市左營區
     
+    # 預設位置 (楠梓)
+    default_pos = {"lat": 22.7268, "lon": 120.2975}
+    current_user_pos = default_pos
+    location_mode = "預設"
+
     with col_side:
         with st.container():
-            st.markdown("### 📍 目前位置")
-            st.info("高雄市 (預設)")
-            st.caption(f"資料庫醫院數：{len(HOSPITALS_DB)} 家")
-            st.markdown("---")
-            if not GOOGLE_API_KEY:
-                st.error("⚠️ 未偵測到 API Key，請至 Streamlit Cloud 設定 Secrets。")
+            st.markdown("### 📍 設定您的位置")
+            
+            # GPS 按鈕
+            gps_location = get_geolocation(component_key='get_loc', button_text='📍 使用我的位置 (GPS)')
+            
+            # 手動選單
+            manual_city = st.selectbox(
+                "或手動選擇區域：",
+                ["高雄市 (楠梓區)", "高雄市 (左營區)", "台北市 (信義區)", "台中市 (西屯區)"]
+            )
+            
+            if gps_location and gps_location.get('coords'):
+                current_user_pos = {
+                    "lat": gps_location['coords']['latitude'],
+                    "lon": gps_location['coords']['longitude']
+                }
+                location_mode = "GPS定位"
+                st.success("✅ 定位成功！")
             else:
-                st.success("✅ AI 系統運作中")
+                user_coords = {
+                    "高雄市 (楠梓區)": {"lat": 22.7268, "lon": 120.2975},
+                    "高雄市 (左營區)": {"lat": 22.6800, "lon": 120.3000},
+                    "台北市 (信義區)": {"lat": 25.0330, "lon": 121.5654},
+                    "台中市 (西屯區)": {"lat": 24.1630, "lon": 120.6400}
+                }
+                current_user_pos = user_coords[manual_city]
+                location_mode = manual_city
+
+            st.info(f"目前位置：**{location_mode}**")
+            st.caption(f"資料庫醫院數：{len(HOSPITALS_DB)} 家")
+            
+            if not GOOGLE_API_KEY:
+                st.error("⚠️ 未偵測到 API Key")
+            else:
+                st.success("✅ AI 系統已連線")
             
     with col_main:
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。高雄的朋友，請告訴我您的寵物怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
@@ -187,19 +222,34 @@ with tab_home:
             st.chat_message("user").write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("🧠 AI 正在分析..."):
+                with st.spinner("🧠 AI 正在分析並搜尋附近資源..."):
                     reply_text, urgency_level, animal_type, search_keywords = get_gemini_response(prompt)
                     st.write(reply_text)
                     st.session_state.messages.append({"role": "assistant", "content": reply_text})
                     
                     vip_hospitals = []
+                    
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
+                            # 1. 計算距離
+                            dist = calculate_distance(current_user_pos['lat'], current_user_pos['lon'], h['lat'], h['lon'])
+                            h['distance_km'] = round(dist, 1)
+                            
                             tags_str = str(h['tags'])
+                            
+                            # 2. 判斷科別匹配
+                            is_match = False
                             if animal_type in tags_str or any(k in tags_str for k in search_keywords.split()):
-                                vip_hospitals.append(h)
+                                is_match = True
                             if urgency_level == "high" and ("24H" in tags_str or "急診" in tags_str):
-                                if h not in vip_hospitals: vip_hospitals.append(h)
+                                is_match = True
+                            
+                            # 3. 嚴格篩選：只顯示 10 公里內 且 符合科別 的醫院
+                            if is_match and dist < 10.0: 
+                                vip_hospitals.append(h)
+
+                    # 排序：由近到遠
+                    vip_hospitals.sort(key=lambda x: x['distance_km'])
 
                     st.markdown("---")
                     
@@ -208,40 +258,43 @@ with tab_home:
                     else:
                         st.info(f"ℹ️ 醫療建議類別：{animal_type}")
 
-                    m = folium.Map(location=[current_user_pos["lat"], current_user_pos["lon"]], zoom_start=13)
-                    folium.Marker([current_user_pos["lat"], current_user_pos["lon"]], icon=folium.Icon(color="blue", icon="user"), popup="您 (高雄)").add_to(m)
+                    # --- 地圖顯示 ---
+                    m = folium.Map(location=[current_user_pos["lat"], current_user_pos["lon"]], zoom_start=14)
+                    folium.Marker([current_user_pos["lat"], current_user_pos["lon"]], icon=folium.Icon(color="blue", icon="user"), popup="您的位置").add_to(m)
                     
                     if vip_hospitals:
-                        h_color = "red" if urgency_level == "high" else "green"
                         for h in vip_hospitals:
-                            popup_info = f"<b>{h['name']}</b><br>{h['phone']}"
-                            folium.Marker([h['lat'], h['lon']], popup=folium.Popup(popup_info, max_width=200), icon=folium.Icon(color=h_color, icon="plus")).add_to(m)
+                            color = "red" if urgency_level == "high" else "green"
+                            popup_info = f"<b>{h['name']}</b><br>距離: {h['distance_km']} km"
+                            folium.Marker([h['lat'], h['lon']], popup=folium.Popup(popup_info, max_width=200), icon=folium.Icon(color=color, icon="plus")).add_to(m)
                     
                     components.html(m._repr_html_(), height=350)
 
-                    # --- 推薦醫院卡片 (修正連結) ---
+                    # --- 醫院卡片 (顯示距離) ---
                     if vip_hospitals:
-                        st.subheader(f"🏆 推薦 {animal_type} 專科")
+                        st.subheader(f"🏆 10公里內推薦 ({len(vip_hospitals)} 家)")
                         for h in vip_hospitals:
                             with st.container():
                                 c1, c2 = st.columns([3, 1])
                                 with c1:
                                     st.markdown(f"### 🏅 {h['name']}")
-                                    st.markdown(f"**評價：** {h['rating']} ⭐ | **狀態：** {h['status']}")
+                                    st.markdown(f"**距離：{h['distance_km']} 公里** | ⭐ {h['rating']} | {h['status']}")
                                     tags_html = "".join([f"<span style='background:#E9ECEF;padding:2px 8px;border-radius:10px;margin-right:5px;font-size:0.8em'>#{t.strip()}</span>" for t in h['tags']])
                                     st.markdown(tags_html, unsafe_allow_html=True)
                                 with c2:
                                     st.write("")
-                                    # ✅ 修正點：使用 Google Maps 官方標準導航連結
                                     link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("")
+                    else:
+                        # 這是最重要的修改：如果 10 公里內沒有，會明確告知
+                        st.warning(f"⚠️ 在您附近 10 公里內，暫無資料庫認證的 **{animal_type}** 醫院。")
+                        st.caption("建議您擴大搜尋範圍，或點擊下方按鈕使用 Google Maps 查詢。")
 
-                    # 擴大搜尋按鈕 (修正連結)
                     st.markdown("#### 沒找到合適的？")
-                    # ✅ 修正點：使用 Google Maps 官方標準搜尋連結
-                    gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
-                    st.link_button(f"🔍 在 Google Maps 搜尋「{search_keywords}」", gmap_query, type="secondary")
+                    # 使用 GPS 座標進行 Google Maps 搜尋
+                    gmap_query = f"http://googleusercontent.com/maps.google.com/maps?q={search_keywords}&center={current_user_pos['lat']},{current_user_pos['lon']}"
+                    st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
 # --- TAB 2: 衛教專區 ---
 with tab_news:
@@ -285,9 +338,5 @@ with tab_about:
     st.markdown("""
     ### 關於 PetMatch
     我們致力於解決特殊寵物就醫資訊不透明的問題。
-    
-    - **精準導航**：連結專科醫院資料庫。
-    - **AI 分診**：減少飼主焦慮。
-    - **社群共享**：最新的衛教資訊。
     """)
     st.image("https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=800")
