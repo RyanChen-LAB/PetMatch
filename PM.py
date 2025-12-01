@@ -36,21 +36,29 @@ st.markdown("""
         border: 1px solid #E0E0E0;
     }
     
+    /* 按鈕全寬度與美化 */
     .stButton > button {
         background-color: #2A9D8F;
         color: white;
-        border-radius: 25px;
+        border-radius: 15px;
         border: none;
-        padding: 10px 24px;
+        padding: 15px 24px; /* 加大內距讓按鈕變大 */
         font-weight: bold;
+        font-size: 1.1rem;  /* 加大字體 */
         width: 100%;
         transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .stButton > button:hover {
         background-color: #21867a;
         transform: translateY(-2px);
     }
     
+    /* 強制讓定位按鈕區域明顯一點 */
+    div[data-testid="stMarkdownContainer"] p {
+        font-weight: 500;
+    }
+
     .stChatMessage {
         background-color: #ffffff;
         border-radius: 15px;
@@ -155,8 +163,8 @@ def get_daily_tip():
 
 st.markdown("""
     <div class="hero-container">
-        <div class="hero-title">🐾 PetMatch AI智慧寵心導航🧑🏻‍⚕️</div>
-        <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
+         <div class="hero-title">🐾 PetMatch AI智慧寵心導航🧑🏻‍⚕️</div>
+         <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -166,51 +174,36 @@ tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區
 with tab_home:
     col_main, col_side = st.columns([2, 1])
     
-    # 預設位置 (楠梓)
+    # 預設位置：高雄市楠梓區
     default_pos = {"lat": 22.7268, "lon": 120.2975}
     current_user_pos = default_pos
-    location_mode = "預設"
+    location_status = "使用預設位置 (楠梓)"
 
     with col_side:
         with st.container():
             st.markdown("### 📍 設定您的位置")
+            st.write("請點擊下方按鈕，啟用 GPS 以獲得最精準的推薦：")
             
-            # --- 1. 使用 Checkbox 作為 GPS 開關 (可見的互動元件) ---
-            use_gps = st.checkbox("✅ 啟用 GPS 定位 (點我)")
+            # --- 🚀 重新設計的定位按鈕區 ---
+            # 使用 Checkbox 來觸發定位，樣式已透過 CSS 加大
+            use_gps = st.checkbox("📍 使用我的位置 (GPS Mode)")
             
-            gps_location = None
             if use_gps:
-                # 呼叫隱藏元件取得位置
                 gps_location = get_geolocation(component_key='get_loc')
-                if not gps_location:
-                    st.warning("正在等待 GPS 訊號... 請允許瀏覽器權限")
-            
-            # --- 2. 手動選擇 ---
-            manual_city = st.selectbox(
-                "或手動選擇區域：",
-                ["高雄市 (楠梓區)", "高雄市 (左營區)", "台北市 (信義區)", "台中市 (西屯區)"]
-            )
-            
-            # 判斷邏輯：如果勾選且抓到 GPS，就用 GPS
-            if use_gps and gps_location and gps_location.get('coords'):
-                current_user_pos = {
-                    "lat": gps_location['coords']['latitude'],
-                    "lon": gps_location['coords']['longitude']
-                }
-                location_mode = "GPS定位"
-                st.success("✅ 定位成功！")
+                
+                if gps_location and gps_location.get('coords'):
+                    current_user_pos = {
+                        "lat": gps_location['coords']['latitude'],
+                        "lon": gps_location['coords']['longitude']
+                    }
+                    location_status = "✅ GPS 定位成功"
+                    st.success("已鎖定您的位置！")
+                else:
+                    st.warning("📡 正在獲取訊號... 請允許瀏覽器權限")
             else:
-                # 否則使用手動選擇
-                user_coords = {
-                    "高雄市 (楠梓區)": {"lat": 22.7268, "lon": 120.2975},
-                    "高雄市 (左營區)": {"lat": 22.6800, "lon": 120.3000},
-                    "台北市 (信義區)": {"lat": 25.0330, "lon": 121.5654},
-                    "台中市 (西屯區)": {"lat": 24.1630, "lon": 120.6400}
-                }
-                current_user_pos = user_coords[manual_city]
-                location_mode = manual_city
+                st.info("目前使用預設位置：高雄市 (楠梓)")
 
-            st.write(f"目前模式：**{location_mode}**")
+            st.markdown("---")
             st.caption(f"資料庫醫院數：{len(HOSPITALS_DB)} 家")
             
             if not GOOGLE_API_KEY:
@@ -251,6 +244,7 @@ with tab_home:
                             if urgency_level == "high" and ("24H" in tags_str or "急診" in tags_str):
                                 is_match = True
                             
+                            # 10 公里篩選
                             if is_match and dist < 10.0: 
                                 vip_hospitals.append(h)
 
