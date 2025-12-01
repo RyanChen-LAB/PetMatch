@@ -9,123 +9,99 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 極致美化魔法區 (v3.0 Pro) ======
+# ====== 🎨 CSS 手機版極致閱讀優化 & 3D按鈕 ======
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;500;700&family=Nunito:wght@700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
     
+    /* 1. 全域強制設定：背景淺色，文字深色 */
     html, body, [class*="css"] {
         font-family: 'Noto Sans TC', sans-serif;
+        color: #264653 !important;
     }
     
     .stApp {
         background-color: #F9F7F2; 
     }
 
-    /* --- 頂部 Hero Header --- */
-    .hero-box {
+    /* 2. 強制覆蓋文字顏色 */
+    .stMarkdown, .stText, p, h1, h2, h3, h4, h5, h6, label, span, div {
+        color: #264653 !important;
+    }
+
+    /* 3. Hero Header 白色文字例外 */
+    .hero-container {
         background: linear-gradient(120deg, #264653, #2A9D8F);
-        padding: 40px;
+        padding: 40px 20px;
         border-radius: 20px;
-        color: white;
+        color: white !important;
         text-align: center;
         box-shadow: 0 10px 20px rgba(42, 157, 143, 0.2);
         margin-bottom: 30px;
-        position: relative;
-        overflow: hidden;
     }
-    .hero-title {
-        font-family: 'Nunito', sans-serif;
-        font-size: 3rem;
-        font-weight: 800;
-        margin: 0;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    .hero-title, .hero-subtitle {
+        color: white !important;
     }
-    .hero-subtitle {
-        font-size: 1.1rem;
-        opacity: 0.9;
-        margin-top: 10px;
-        font-weight: 300;
-        letter-spacing: 1px;
-    }
+    .hero-title { font-family: 'Nunito', sans-serif; font-size: 2.5rem; font-weight: 800; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+    .hero-subtitle { font-size: 1.1rem; opacity: 0.9; margin-top: 10px; font-weight: 500; letter-spacing: 1px; }
 
-    /* --- 側邊欄定位按鈕 (3D 黃金按鈕) --- */
-    section[data-testid="stSidebar"] .stButton button {
-        background: linear-gradient(to bottom, #F4A261, #E76F51);
-        color: white;
+    /* 4. 按鈕優化 (白色文字) */
+    .stButton > button {
+        background-color: #2A9D8F !important;
+        color: white !important;
         border: none;
         border-radius: 12px;
-        padding: 18px 24px;
-        font-weight: 700;
+        padding: 15px 24px;
+        font-weight: bold;
         font-size: 1.1rem;
+        width: 100%;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+    }
+    .stButton > button:hover {
+        background-color: #21867a !important;
+        transform: translateY(-2px);
+    }
+    
+    /* 側邊欄定位按鈕 (3D 黃金按鈕) */
+    section[data-testid="stSidebar"] .stButton button {
+        background: linear-gradient(to bottom, #F4A261, #E76F51) !important;
         box-shadow: 0 6px 0 #C0583E, 0 12px 10px rgba(0,0,0,0.2);
-        transition: all 0.1s;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 20px;
+        color: white !important;
     }
     section[data-testid="stSidebar"] .stButton button:hover {
-        background: linear-gradient(to bottom, #F5B076, #EC8368);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 0 #C0583E, 0 15px 20px rgba(0,0,0,0.2);
+        background: linear-gradient(to bottom, #F5B076, #EC8368) !important;
     }
     section[data-testid="stSidebar"] .stButton button:active {
         transform: translateY(4px);
         box-shadow: 0 2px 0 #C0583E, 0 2px 2px rgba(0,0,0,0.1);
     }
 
-    /* --- 醫院卡片 (懸浮效果) --- */
+    /* 5. 卡片背景 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 20px;
         padding: 25px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         border: 1px solid #F0F0F0;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    div[data-testid="stVerticalBlock"] > div[style*="background-color"]:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        border-color: #2A9D8F;
     }
 
-    /* --- 標籤膠囊 (Pills) --- */
-    .tag-pill {
-        display: inline-block;
-        background-color: #E8F5E9;
-        color: #2E7D32;
-        padding: 4px 12px;
-        border-radius: 50px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        margin-right: 6px;
-        margin-bottom: 6px;
-        border: 1px solid #C8E6C9;
-    }
-    .tag-pill.emergency {
-        background-color: #FFEBEE;
-        color: #C62828;
-        border-color: #FFCDD2;
-    }
-
-    /* --- 聊天氣泡優化 --- */
+    /* 6. 聊天氣泡 */
     .stChatMessage {
-        background-color: white;
+        background-color: white !important;
         border-radius: 18px;
         padding: 15px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         margin-bottom: 10px;
         border: 1px solid #F1F1F1;
     }
-    .stChatMessage[data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #E0F2F1;
+    .stChatMessage p {
+        color: #333333 !important;
     }
+    
+    .stat-box small { color: #666 !important; }
+    .stat-box b { color: #2A9D8F !important; }
 
-    /* --- 一般按鈕 (導航用) --- */
-    .element-container .stButton > button {
-        border-radius: 50px;
-        font-weight: 600;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -223,9 +199,9 @@ def get_daily_tip():
 # ====================
 
 st.markdown("""
-    <div class="hero-box">
-       <div class="hero-title"> 🧑🏻‍⚕️PetMatch AI智慧寵心導航</div>
-       <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
+    <div class="hero-container">
+        <div class="hero-title"> 🧑🏻‍⚕️ PetMatch AI智慧寵心導航</div>
+        <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -235,7 +211,7 @@ tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區
 with tab_home:
     col_main, col_side = st.columns([2, 1])
     
-    # 預設位置：高雄市楠梓區
+    # 預設位置
     default_pos = {"lat": 22.7268, "lon": 120.2975}
     current_user_pos = default_pos
     location_status = "使用預設位置 (楠梓)"
@@ -249,6 +225,7 @@ with tab_home:
             use_gps = st.checkbox("📍 使用我的位置 (GPS Mode)")
             
             if use_gps:
+                # ✅ 修正點：移除 enable_high_accuracy 參數以避免報錯
                 gps_location = get_geolocation(component_key='get_loc')
                 
                 if gps_location and gps_location.get('coords'):
@@ -264,10 +241,11 @@ with tab_home:
 
             st.markdown("---")
             
+            # 統計資訊小卡 (修正文字顏色)
             st.markdown(f"""
-            <div style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
-                <small>目前資料庫收錄</small><br>
-                <b style="font-size:1.5rem; color:#2A9D8F;">{len(HOSPITALS_DB)}</b> <small>家專科醫院</small>
+            <div class="stat-box" style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
+                <small style="color:#666 !important;">目前資料庫收錄</small><br>
+                <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
             </div>
             """, unsafe_allow_html=True)
             
@@ -287,7 +265,7 @@ with tab_home:
             st.chat_message("user").write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("🧠 AI 正在分析並搜尋附近資源..."):
+                with st.spinner("🧠 AI 正在分析並搜尋 10km 內資源..."):
                     reply_text, urgency_level, animal_type, search_keywords = get_gemini_response(prompt)
                     st.write(reply_text)
                     st.session_state.messages.append({"role": "assistant", "content": reply_text})
@@ -341,7 +319,6 @@ with tab_home:
                                     st.markdown(f"### 🏅 {h['name']}")
                                     st.markdown(f"**距離：{h['distance_km']} 公里** | ⭐ {h['rating']} | {h['status']}")
                                     
-                                    # 標籤膠囊化 (Pills)
                                     tags_html = ""
                                     for t in h['tags']:
                                         t_clean = t.strip()
@@ -353,7 +330,8 @@ with tab_home:
                                     
                                 with c2:
                                     st.write("")
-                                    # ✅ 官方標準導航連結 (FIXED)
+                                    # ✅ 修正點：使用 Google 官方標準連結格式 (Universal Link)
+                                    # 格式：https://www.google.com/maps/dir/?api=1&destination=lat,lng
                                     link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("") 
@@ -361,7 +339,8 @@ with tab_home:
                         st.warning(f"⚠️ 附近 10 公里內暫無資料庫認證的 **{animal_type}** 醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    # ✅ 官方標準搜尋連結 (FIXED)
+                    # ✅ 修正點：使用 Google 官方標準搜尋連結
+                    # 格式：https://www.google.com/maps/search/?api=1&query=關鍵字
                     gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
