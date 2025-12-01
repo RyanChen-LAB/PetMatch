@@ -12,15 +12,12 @@ st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾",
 # ====== 🎨 CSS 極致美化魔法區 (v3.0 Pro) ======
 st.markdown("""
 <style>
-    /* 引入現代字體 */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;500;700&family=Nunito:wght@700&display=swap');
     
-    /* 全域設定 */
     html, body, [class*="css"] {
         font-family: 'Noto Sans TC', sans-serif;
     }
     
-    /* 背景色：溫暖的奶油白，護眼且高級 */
     .stApp {
         background-color: #F9F7F2; 
     }
@@ -53,7 +50,6 @@ st.markdown("""
     }
 
     /* --- 側邊欄定位按鈕 (3D 黃金按鈕) --- */
-    /* 針對側邊欄的第一個按鈕進行特殊樣式設計 */
     section[data-testid="stSidebar"] .stButton button {
         background: linear-gradient(to bottom, #F4A261, #E76F51);
         color: white;
@@ -122,7 +118,7 @@ st.markdown("""
         border: 1px solid #F1F1F1;
     }
     .stChatMessage[data-testid="stChatMessage"]:nth-child(odd) {
-        background-color: #E0F2F1; /* 助理的氣泡帶點綠 */
+        background-color: #E0F2F1;
     }
 
     /* --- 一般按鈕 (導航用) --- */
@@ -226,11 +222,10 @@ def get_daily_tip():
 # 🖥️ 介面主程式
 # ====================
 
-# 1. 華麗的 Hero Header
 st.markdown("""
     <div class="hero-box">
-         <div class="hero-title">🐾 PetMatch AI智慧寵心導航🧑🏻‍⚕️</div>
-        <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
+       <div class="hero-title"> 🧑🏻‍⚕️PetMatch AI智慧寵心導航</div>
+       <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -269,7 +264,6 @@ with tab_home:
 
             st.markdown("---")
             
-            # 統計資訊小卡
             st.markdown(f"""
             <div style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
                 <small>目前資料庫收錄</small><br>
@@ -359,15 +353,16 @@ with tab_home:
                                     
                                 with c2:
                                     st.write("")
+                                    # ✅ 官方標準導航連結 (FIXED)
                                     link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
-                            st.write("") # 卡片間距
+                            st.write("") 
                     else:
-                        st.warning(f"⚠️ 在您附近 10 公里內，暫無資料庫認證的 **{animal_type}** 醫院。")
-                        st.caption("建議您擴大搜尋範圍，或點擊下方按鈕使用 Google Maps 查詢。")
+                        st.warning(f"⚠️ 附近 10 公里內暫無資料庫認證的 **{animal_type}** 醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    gmap_query = f"http://googleusercontent.com/maps.google.com/maps?q={search_keywords}&center={current_user_pos['lat']},{current_user_pos['lon']}"
+                    # ✅ 官方標準搜尋連結 (FIXED)
+                    gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
 # --- TAB 2: 衛教專區 ---
