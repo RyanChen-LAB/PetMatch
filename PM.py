@@ -3,7 +3,7 @@ import pandas as pd
 import google.generativeai as genai
 import folium
 import streamlit.components.v1 as components
-from streamlit_js_eval import get_geolocation # 記得安裝 pip install streamlit-js-eval
+from streamlit_js_eval import get_geolocation # 確保已安裝: pip install streamlit-js-eval
 from math import radians, cos, sin, asin, sqrt
 
 # --- 1. 頁面設定 ---
@@ -67,7 +67,7 @@ except:
     GOOGLE_API_KEY = "" 
 # ==============================
 
-# --- 工具：計算距離 (Haversine Formula) ---
+# --- 工具：計算距離 ---
 def calculate_distance(lat1, lon1, lat2, lon2):
     try:
         lon1, lat1, lon2, lat2 = map(radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
@@ -75,7 +75,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
         dlat = lat2 - lat1 
         a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
         c = 2 * asin(sqrt(a)) 
-        r = 6371 # 地球半徑 (km)
+        r = 6371 
         return c * r
     except:
         return 9999
@@ -175,16 +175,24 @@ with tab_home:
         with st.container():
             st.markdown("### 📍 設定您的位置")
             
-            st.info("👇 點擊下方取得 GPS 定位")
-            gps_location = get_geolocation(component_key='get_loc')
+            # --- 1. 使用 Checkbox 作為 GPS 開關 (可見的互動元件) ---
+            use_gps = st.checkbox("✅ 啟用 GPS 定位 (點我)")
             
-            # 手動選單
+            gps_location = None
+            if use_gps:
+                # 呼叫隱藏元件取得位置
+                gps_location = get_geolocation(component_key='get_loc')
+                if not gps_location:
+                    st.warning("正在等待 GPS 訊號... 請允許瀏覽器權限")
+            
+            # --- 2. 手動選擇 ---
             manual_city = st.selectbox(
                 "或手動選擇區域：",
                 ["高雄市 (楠梓區)", "高雄市 (左營區)", "台北市 (信義區)", "台中市 (西屯區)"]
             )
             
-            if gps_location and gps_location.get('coords'):
+            # 判斷邏輯：如果勾選且抓到 GPS，就用 GPS
+            if use_gps and gps_location and gps_location.get('coords'):
                 current_user_pos = {
                     "lat": gps_location['coords']['latitude'],
                     "lon": gps_location['coords']['longitude']
@@ -192,6 +200,7 @@ with tab_home:
                 location_mode = "GPS定位"
                 st.success("✅ 定位成功！")
             else:
+                # 否則使用手動選擇
                 user_coords = {
                     "高雄市 (楠梓區)": {"lat": 22.7268, "lon": 120.2975},
                     "高雄市 (左營區)": {"lat": 22.6800, "lon": 120.3000},
@@ -201,7 +210,7 @@ with tab_home:
                 current_user_pos = user_coords[manual_city]
                 location_mode = manual_city
 
-            st.info(f"目前位置：**{location_mode}**")
+            st.write(f"目前模式：**{location_mode}**")
             st.caption(f"資料庫醫院數：{len(HOSPITALS_DB)} 家")
             
             if not GOOGLE_API_KEY:
@@ -231,24 +240,20 @@ with tab_home:
                     
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
-                            # 1. 計算距離
                             dist = calculate_distance(current_user_pos['lat'], current_user_pos['lon'], h['lat'], h['lon'])
                             h['distance_km'] = round(dist, 1)
                             
                             tags_str = str(h['tags'])
                             
-                            # 2. 判斷科別匹配
                             is_match = False
                             if animal_type in tags_str or any(k in tags_str for k in search_keywords.split()):
                                 is_match = True
                             if urgency_level == "high" and ("24H" in tags_str or "急診" in tags_str):
                                 is_match = True
                             
-                            # 3. 嚴格篩選：只顯示 10 公里內 且 符合科別 的醫院
                             if is_match and dist < 10.0: 
                                 vip_hospitals.append(h)
 
-                    # 排序：由近到遠
                     vip_hospitals.sort(key=lambda x: x['distance_km'])
 
                     st.markdown("---")
@@ -258,7 +263,6 @@ with tab_home:
                     else:
                         st.info(f"ℹ️ 醫療建議類別：{animal_type}")
 
-                    # --- 地圖顯示 ---
                     m = folium.Map(location=[current_user_pos["lat"], current_user_pos["lon"]], zoom_start=14)
                     folium.Marker([current_user_pos["lat"], current_user_pos["lon"]], icon=folium.Icon(color="blue", icon="user"), popup="您的位置").add_to(m)
                     
@@ -270,7 +274,6 @@ with tab_home:
                     
                     components.html(m._repr_html_(), height=350)
 
-                    # --- 醫院卡片 (顯示距離) ---
                     if vip_hospitals:
                         st.subheader(f"🏆 10公里內推薦 ({len(vip_hospitals)} 家)")
                         for h in vip_hospitals:
@@ -287,12 +290,10 @@ with tab_home:
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("")
                     else:
-                        # 這是最重要的修改：如果 10 公里內沒有，會明確告知
                         st.warning(f"⚠️ 在您附近 10 公里內，暫無資料庫認證的 **{animal_type}** 醫院。")
                         st.caption("建議您擴大搜尋範圍，或點擊下方按鈕使用 Google Maps 查詢。")
 
                     st.markdown("#### 沒找到合適的？")
-                    # 使用 GPS 座標進行 Google Maps 搜尋
                     gmap_query = f"http://googleusercontent.com/maps.google.com/maps?q={search_keywords}&center={current_user_pos['lat']},{current_user_pos['lon']}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
