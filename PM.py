@@ -128,8 +128,9 @@ def get_gemini_response(user_input):
             search_keywords = text.split("SEARCH_KEYWORDS:")[-1].strip()
 
         return clean_reply, urgency, animal_type, search_keywords
-    except:
-        return "連線錯誤 (請檢查 API Key 或額度)", "low", "動物", "動物醫院"
+    except Exception as e:
+        # 這行會把 Google 回傳的英文錯誤碼直接印在螢幕上
+        return f"系統偵測到詳細錯誤：{str(e)}", "low", "動物", "動物醫院"
 
 # --- 每日知識 ---
 def get_daily_tip():
