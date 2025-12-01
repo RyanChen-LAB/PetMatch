@@ -136,7 +136,7 @@ def get_daily_tip():
     if not GOOGLE_API_KEY: return "請設定 API Key 以啟用功能"
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
         return res.text
     except:
