@@ -175,8 +175,8 @@ with tab_home:
         with st.container():
             st.markdown("### 📍 設定您的位置")
             
-            # GPS 按鈕
-            gps_location = get_geolocation(component_key='get_loc', button_text='📍 使用我的位置 (GPS)')
+            st.info("👇 點擊下方取得 GPS 定位")
+            gps_location = get_geolocation(component_key='get_loc')
             
             # 手動選單
             manual_city = st.selectbox(
