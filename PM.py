@@ -150,7 +150,7 @@ def get_daily_tip():
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">🐾 PetMatch AI智慧寵心導航</div>
-        <div class="hero-subtitle">專為 爬蟲・鳥類・特寵 設計的 AI 醫療導航</div>
+        <div class="hero-subtitle">專為 貓・狗・特寵 設計的 AI 醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
