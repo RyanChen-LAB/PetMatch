@@ -228,8 +228,8 @@ def get_daily_tip():
 
 st.markdown("""
     <div class="hero-container">
-        <div class="hero-title">🐾 PetMatch AI智慧寵心導航</div>
-        <div class="hero-subtitle">專為 爬蟲・鳥類・特寵 設計的 AI 醫療導航</div>
+        <div class="hero-title"> 👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
+        <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -251,7 +251,7 @@ with st.sidebar:
     st.caption("v5.3 安全修復版")
 
 # 主畫面分頁
-tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
+tab_home, tab_news, tab_about = st.tabs(["🏥 AI智慧導航", "📰 寶貝衛教專區", "ℹ️ 關於我們"])
 
 # --- TAB 1: 智能導航 ---
 with tab_home:
@@ -270,7 +270,7 @@ with tab_home:
             if 'gps_activated' not in st.session_state:
                 st.session_state.gps_activated = False
 
-            if st.button("📍 點擊啟用 GPS 自動定位", type="primary", use_container_width=True):
+            if st.button("📍 點擊啟用自動定位", type="primary", use_container_width=True):
                 st.session_state.gps_activated = True
                 st.rerun()
 
@@ -282,9 +282,9 @@ with tab_home:
                         "lat": gps_location['coords']['latitude'],
                         "lon": gps_location['coords']['longitude']
                     }
-                    st.success("✅ 定位成功！")
+                    st.success("✅ 已定位成功！")
                 else:
-                    st.warning("📡 正在連線衛星... 請允許權限")
+                    st.warning("📡 正在連線定位系統... 請允許權限")
             else:
                 st.info("👆 請點擊上方大按鈕開始")
         
@@ -358,16 +358,16 @@ with tab_home:
 
     # ====== 左側：AI 對話 ======
     with col_chat:
-        st.markdown("### 💬 AI 醫療助理")
+        st.markdown("### 💬 AI 汪汪醫療助理")
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是汪汪隊AI醫療助理，先別緊張。請告訴我寶貝怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        if prompt := st.chat_input("輸入症狀 (例如：守宮不吃東西)..."):
+        if prompt := st.chat_input("輸入症狀 (例如：貓咪一直不吃東西)..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.chat_message("user").write(prompt)
 
@@ -479,6 +479,6 @@ with tab_news:
 with tab_about:
     st.markdown("""
     ### 關於 PetMatch
-    我們致力於解決特殊寵物就醫資訊不透明的問題。
+    我們致力於解決寵物就醫焦慮症的問題，讓寶貝就醫更明確，減少延誤即早恢復健康。
     """)
     st.image("https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=800")
