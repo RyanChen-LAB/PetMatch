@@ -35,7 +35,7 @@ st.markdown("""
 
     /* 3. Hero Header (維持白色) */
     .hero-container {
-        background: linear-gradient(120deg, #264653, #2A9D8F);
+        background: linear-gradient(120deg, #d4fc79 0%, #96e6a1 100%);
         padding: 30px;
         border-radius: 20px;
         color: white !important;
@@ -43,12 +43,9 @@ st.markdown("""
         box-shadow: 0 10px 20px rgba(42, 157, 143, 0.2);
         margin-bottom: 25px;
     }
-    .hero-title { font-family: 'Nunito', sans-serif; font-size: 2.2rem; font-weight: 800; margin: 0; color: white !important; }
-    .hero-subtitle { font-size: 1rem; opacity: 0.9; margin-top: 5px; color: white !important; }
+    .hero-title { font-family: 'Nunito', sans-serif; font-size: 2.2rem; font-weight: 800; margin: 0; color: #264653 !important; }
+    .hero-subtitle { font-size: 1rem; opacity: 0.9; margin-top: 5px; color: #264653 !important; }
     
-    /* 強制 Hero 內文字白 */
-    .hero-container * { color: white !important; }
-
     /* 4. 🔥 3D 超大定位按鈕專屬樣式 🔥 */
     /* 針對 Primary Button 做特效 */
     .stButton > button[kind="primary"] {
