@@ -9,7 +9,7 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 介面終極修復 (v11.0) ======
+# ====== 🎨 CSS 介面終極修復 (v10.2) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -92,7 +92,7 @@ st.markdown("""
         letter-spacing: 1px; 
     }
 
-    /* 9. 🔥 3D 按鈕樣式 (綠色 Primary - 定位與確認用) 🔥 */
+    /* 9. 3D 按鈕樣式 */
     .stButton > button[kind="primary"] {
         background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
         color: white !important;
@@ -110,8 +110,7 @@ st.markdown("""
         transform: translateY(6px);
         box-shadow: 0 0 0 #1A6B63, 0 2px 5px rgba(0,0,0,0.2);
     }
-    
-    /* 10. 🔥 3D 連結按鈕樣式 (橘色 Secondary - Google搜尋用) 🔥 */
+    /* 搜尋按鈕 (橘紅色 3D) */
     .stLinkButton > a[kind="secondary"] {
         background: linear-gradient(to bottom, #E76F51, #D65A3F) !important;
         color: white !important;
@@ -134,7 +133,7 @@ st.markdown("""
     /* 按鈕文字強制白 */
     .stButton > button p, .stLinkButton > a { color: white !important; }
 
-    /* 11. 卡片與氣泡 */
+    /* 10. 卡片與氣泡 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -280,7 +279,7 @@ with st.sidebar:
         <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v11.0 介面終極修復")
+    st.caption("v10.2 連結終極修復版")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
@@ -300,12 +299,11 @@ with tab_home:
         col_gps_btn, col_map_view = st.columns([1, 2])
         
         with col_gps_btn:
-            st.write("請先定位，AI 將為您尋找最近的資源：")
+            st.write("請先點擊下方按鈕進行定位，或使用手動切換功能：")
             
             if 'gps_activated' not in st.session_state:
                 st.session_state.gps_activated = False
 
-            # 🔥 按鈕文字修正：📍 點擊啟用定位系統
             if st.button("📍 點擊啟用定位系統", type="primary", use_container_width=True):
                 st.session_state.gps_activated = True
                 st.rerun()
@@ -401,13 +399,13 @@ with tab_home:
         st.markdown('<div class="step-header">💬 第二步：AI 醫療諮詢</div>', unsafe_allow_html=True)
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI喵醫小助理，請告訴我您的寵物怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        if prompt := st.chat_input("輸入症狀 (例如：貓咪不吃東西)..."):
+        if prompt := st.chat_input("輸入症狀 (例如：守宮不吃東西)..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.chat_message("user").write(prompt)
 
@@ -444,7 +442,7 @@ with tab_home:
                     st.markdown("---")
                     
                     if min_dist > 20:
-                        st.warning(f"⚠️ 最近的專科醫院距離您 **{int(min_dist)} 公里**。")
+                        st.warning(f"⚠️ 偵測到最近的專科醫院距離您 **{int(min_dist)} 公里**。")
                         st.caption("這可能是因為您位於偏遠地區，或定位尚未準確。系統已為您列出最近的選擇。")
 
                     if urgency_level == "high":
@@ -471,17 +469,16 @@ with tab_home:
                                     st.markdown(tags_html, unsafe_allow_html=True)
                                 with c2:
                                     st.write("")
-                                    link = f"http://googleusercontent.com/maps.google.com/maps?daddr={h['lat']},{h['lon']}&dirflg=d"
+                                    # ✅ 修正：使用 Google Navigation API (確保 404 不再發生)
+                                    link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("") 
                     else:
                         st.warning(f"⚠️ 資料庫中暫無 **{animal_type}** 相關醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    
-                    # 🔥 關鍵修正：將搜尋連結改成橘色 3D 大按鈕 🔥
-                    gmap_query = f"http://googleusercontent.com/maps.google.com/maps?q={search_keywords}&center={st.session_state.current_pos['lat']},{st.session_state.current_pos['lon']}"
-                    
+                    # ✅ 修正：使用 Google Search API (確保 404 不再發生)
+                    gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary", use_container_width=True)
 
 # --- TAB 2: 衛教專區 ---
@@ -522,7 +519,7 @@ with tab_news:
             st.write("兔子 24 小時不吃草就有生命危險！學會判斷腸胃停滯的早期徵兆。")
             st.button("閱讀全文", key="b2")
 
-# --- TAB 3: 關於 ---
+# --- TAB 3: 關於 (依照您的要求修改) ---
 with tab_about:
     st.markdown("""
     ### 關於 PetMatch
