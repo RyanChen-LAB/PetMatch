@@ -9,19 +9,47 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 美化魔法區 ======
+# ====== 🎨 CSS 強制淺色模式與美化 (v4.8 終極修復) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
     
-    html, body, [class*="css"] {
+    /* 1. 強制覆蓋 Streamlit 的主題變數 (解決手機深色模式問題) */
+    :root {
+        --primary-color: #2A9D8F;
+        --background-color: #F9F7F2;
+        --secondary-background-color: #F0F2F6;
+        --text-color: #264653;
+        --font: "Noto Sans TC", sans-serif;
+    }
+
+    /* 2. 強制全域文字顏色為深色 */
+    html, body, [class*="css"], .stApp {
         font-family: 'Noto Sans TC', sans-serif;
         color: #264653 !important;
+        background-color: #F9F7F2 !important;
     }
-    
-    .stApp { background-color: #F9F7F2; }
 
-    /* Hero Header */
+    /* 3. 針對所有可能的文字元素進行強制顯色 */
+    .stMarkdown p, .stMarkdown span, .stMarkdown div, 
+    h1, h2, h3, h4, h5, h6, 
+    label, .stText, .stHtml, .stCaption {
+        color: #264653 !important;
+    }
+
+    /* 4. 修正輸入框文字顏色 (避免打字時看不到) */
+    .stTextInput input {
+        color: #264653 !important;
+        background-color: #FFFFFF !important;
+    }
+
+    /* 5. 修正 Toggle 開關旁的文字 */
+    div[data-testid="stCheckbox"] label p {
+        color: #264653 !important;
+        font-weight: bold;
+    }
+
+    /* --- Hero Header (維持白色文字) --- */
     .hero-container {
         background: linear-gradient(120deg, #264653, #2A9D8F);
         padding: 30px;
@@ -33,8 +61,13 @@ st.markdown("""
     }
     .hero-title { font-family: 'Nunito', sans-serif; font-size: 2.2rem; font-weight: 800; margin: 0; color: white !important; }
     .hero-subtitle { font-size: 1rem; opacity: 0.9; margin-top: 5px; color: white !important; }
+    
+    /* 強制 Hero 內的文字不受全域深色影響 */
+    .hero-container h1, .hero-container p, .hero-container div {
+        color: white !important;
+    }
 
-    /* 按鈕樣式 */
+    /* --- 按鈕樣式 --- */
     .stButton > button {
         background-color: #2A9D8F !important;
         color: white !important;
@@ -49,8 +82,12 @@ st.markdown("""
         background-color: #21867a !important;
         transform: translateY(-2px);
     }
+    /* 按鈕內的文字強制白色 */
+    .stButton > button p {
+        color: white !important;
+    }
 
-    /* 卡片與氣泡 */
+    /* --- 卡片與氣泡 --- */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -62,7 +99,6 @@ st.markdown("""
         border-radius: 15px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .stChatMessage p { color: #333 !important; }
     
     /* 統計小卡 */
     .stat-box small { color: #666 !important; }
@@ -165,7 +201,7 @@ def get_daily_tip():
 
 st.markdown("""
     <div class="hero-container">
-         <div class="hero-title"> 🧑🏻‍⚕️PetMatch AI智慧寵心導航</div>
+         <div class="hero-title"> 👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
          <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
@@ -181,18 +217,17 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"""
     <div class="stat-box" style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
-        <small style="color:#666 !important;">目前資料庫收錄</small><br>
-        <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
+        <small>目前資料庫收錄</small><br>
+        <b>{len(HOSPITALS_DB)}</b> <small>家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v4.7 介面修正版")
+    st.caption("v4.8 手機閱讀修復版")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
 
 # --- TAB 1: 智能導航 ---
 with tab_home:
-    # 調整佈局：聊天在左 (2)，地圖在右 (1.2)
     col_chat, col_map = st.columns([2, 1.2])
     
     # 預設位置 (楠梓)
@@ -201,12 +236,11 @@ with tab_home:
 
     # ====== 右側：地圖與定位 ======
     with col_map:
-        # ✅ 使用原生 container 取代 HTML div，解決破圖問題
         with st.container(border=True):
             st.markdown("### 📍 第一步先定位！")
             st.caption("請開啟下方開關，讓系統抓取您的位置：")
             
-            # 1. 定位開關 (Toggle)
+            # 1. 定位開關
             use_gps = st.toggle("✅ 啟用 GPS 自動定位", value=False)
             
             if use_gps:
@@ -226,8 +260,8 @@ with tab_home:
             kaohsiung_coords = {
                 "楠梓區": {"lat": 22.7268, "lon": 120.2975},
                 "左營區": {"lat": 22.6800, "lon": 120.3000},
-                "鼓山區": {"lat": 22.6368, "lon": 120.2795},
                 "三民區": {"lat": 22.6496, "lon": 120.3292},
+                "鼓山區": {"lat": 22.6368, "lon": 120.2795},
                 "苓雅區": {"lat": 22.6204, "lon": 120.3123},
                 "新興區": {"lat": 22.6293, "lon": 120.3023},
                 "前金區": {"lat": 22.6277, "lon": 120.2936},
@@ -263,7 +297,10 @@ with tab_home:
                 "桃源區": {"lat": 23.1593, "lon": 120.7634},
                 "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
             }
-            manual_area = st.selectbox("快速切換至：", list(kaohsiung_coords.keys()))
+            manual_area = st.selectbox(
+                "👇 點此選擇正確區域：",
+                list(kaohsiung_coords.keys())
+            )
             
             if not use_gps:
                 current_user_pos = kaohsiung_coords[manual_area]
