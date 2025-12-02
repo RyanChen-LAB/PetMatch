@@ -9,7 +9,7 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 終極整合 (修復深色模式提示框) ======
+# ====== 🎨 CSS 介面終極修復 (v9.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -30,37 +30,43 @@ st.markdown("""
         background-color: #F9F7F2 !important;
     }
 
-    /* 3. 強制所有文字元素顯色 */
+    /* 3. 強制通用文字顯色 */
     .stMarkdown p, .stMarkdown span, .stMarkdown div, 
     h1, h2, h3, h4, h5, h6, 
-    label, .stText, .stHtml, .stCaption {
+    .stText, .stHtml, .stCaption {
         color: #264653 !important;
     }
 
-    /* 4. 🔥 提示框文字修復 (Success/Warning/Error) 🔥 */
-    /* 強制提示框內的文字為深色，避免在手機深色模式下變成白色 */
-    .stAlert div[data-testid="stMarkdownContainer"] p {
+    /* 4. 🔥 關鍵修復：Toggle 開關與 Checkbox 文字 🔥 */
+    label[data-testid="stWidgetLabel"] p {
+        color: #264653 !important;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    
+    /* 5. 🔥 關鍵修復：提示框 (Success/Warning) 文字 🔥 */
+    /* 確保綠色/黃色框框內的文字是深色，手機深色模式才看得到 */
+    div[data-testid="stAlert"] p, div[data-testid="stAlert"] div {
         color: #000000 !important; 
         font-weight: 500;
     }
 
-    /* 5. 分頁標籤 (Tabs) 顯色修復 */
+    /* 6. 摺疊選單標題 */
+    .streamlit-expanderHeader p {
+        color: #264653 !important;
+        font-weight: 600;
+    }
+
+    /* 7. 分頁標籤文字 */
     button[data-baseweb="tab"] div p {
         color: #264653 !important;
         font-weight: 700 !important;
-        font-size: 1.1rem !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
         border-bottom-color: #2A9D8F !important;
     }
 
-    /* 6. 輸入框文字顏色 */
-    .stTextInput input {
-        color: #264653 !important;
-        background-color: #FFFFFF !important;
-    }
-
-    /* 7. Hero Header (依照您的要求更新) */
+    /* 8. Hero Header */
     .hero-container {
         background: linear-gradient(120deg, #e0f7fa 0%, #b2dfdb 100%);
         padding: 30px;
@@ -87,7 +93,7 @@ st.markdown("""
         letter-spacing: 1px; 
     }
 
-    /* 8. 3D 大按鈕 (定位用) */
+    /* 9. 3D 按鈕樣式 */
     .stButton > button[kind="primary"] {
         background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
         color: white !important;
@@ -97,22 +103,38 @@ st.markdown("""
         font-size: 1.2rem !important;
         font-weight: 900 !important;
         width: 100%;
-        text-shadow: 0px 1px 2px rgba(0,0,0,0.3);
         box-shadow: 0 6px 0 #1A6B63, 0 12px 15px rgba(0,0,0,0.2);
         transition: all 0.1s ease;
         margin-bottom: 15px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
     }
     .stButton > button[kind="primary"]:active {
         transform: translateY(6px);
         box-shadow: 0 0 0 #1A6B63, 0 2px 5px rgba(0,0,0,0.2);
     }
-    /* 按鈕內文字強制白 */
-    .stButton > button p, .stButton > button div { color: white !important; }
+    /* 搜尋按鈕 (橘紅色 3D) */
+    .stLinkButton > a[kind="secondary"] {
+        background: linear-gradient(to bottom, #E76F51, #D65A3F) !important;
+        color: white !important;
+        border: none;
+        border-radius: 15px;
+        padding: 18px 24px;
+        font-size: 1.2rem !important;
+        font-weight: 900 !important;
+        width: 100%;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+        box-shadow: 0 6px 0 #A83E26, 0 12px 15px rgba(0,0,0,0.2);
+        transition: all 0.1s ease;
+    }
+    .stLinkButton > a[kind="secondary"]:active {
+        transform: translateY(6px);
+        box-shadow: 0 0 0 #A83E26, 0 2px 5px rgba(0,0,0,0.2);
+    }
+    /* 按鈕文字強制白 */
+    .stButton > button p, .stLinkButton > a { color: white !important; }
 
-    /* 9. 卡片與氣泡 */
+    /* 10. 卡片與氣泡 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -129,7 +151,6 @@ st.markdown("""
     .stat-box small { color: #666 !important; }
     .stat-box b { color: #2A9D8F !important; }
     
-    /* 步驟標題樣式 */
     .step-header {
         font-size: 1.3rem;
         font-weight: bold;
@@ -236,7 +257,7 @@ def get_daily_tip():
 # 🖥️ 介面主程式
 # ====================
 
-# 1. Hero Header (依要求修改標題與文案)
+# 1. Hero Header (文案修正)
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
@@ -244,7 +265,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 側邊欄 (系統狀態)
+# 側邊欄
 with st.sidebar:
     st.markdown("### ℹ️ 系統狀態")
     if GOOGLE_API_KEY:
@@ -259,119 +280,119 @@ with st.sidebar:
         <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v7.0 偏鄉友善版")
+    st.caption("v9.0 終極完美版")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
 
 # --- TAB 1: 智能導航 ---
 with tab_home:
+    col_chat, col_map = st.columns([2, 1.2])
     
     # 預設位置 (楠梓)
-    if 'current_pos' not in st.session_state:
-        st.session_state.current_pos = {"lat": 22.7268, "lon": 120.2975}
-        st.session_state.location_name = "高雄市 (楠梓區)"
+    default_pos = {"lat": 22.7268, "lon": 120.2975} 
+    current_user_pos = default_pos
 
-    # ====== 區塊 1: 定位與地圖 (上方) ======
-    with st.container(border=True):
-        st.markdown('<div class="step-header">📍 第一步：確認您的位置</div>', unsafe_allow_html=True)
-        
-        col_gps_btn, col_map_view = st.columns([1, 2])
-        
-        with col_gps_btn:
-            st.write("請先定位，AI 將為您尋找最近的資源：")
+    # ====== 右側：地圖與定位 ======
+    with col_map:
+        with st.container(border=True):
+            st.markdown("### 📍 第一步先定位！")
             
+            # --- 3D 大按鈕 (文案修正) ---
             if 'gps_activated' not in st.session_state:
                 st.session_state.gps_activated = False
 
-            if st.button("📍 點擊啟用 GPS 定位", type="primary", use_container_width=True):
+            if st.button("📍 點擊啟用定位系統", type="primary", use_container_width=True):
                 st.session_state.gps_activated = True
                 st.rerun()
 
             if st.session_state.gps_activated:
                 gps_location = get_geolocation(component_key='get_loc')
+                
                 if gps_location and gps_location.get('coords'):
-                    st.session_state.current_pos = {
+                    current_user_pos = {
                         "lat": gps_location['coords']['latitude'],
                         "lon": gps_location['coords']['longitude']
                     }
-                    st.session_state.location_name = "GPS 定位位置"
-                    st.success("✅ 已定位成功！")
+                    st.success("✅ 已完成您的定位")
                 else:
-                    # 修正：更新警告文字
+                    # 文案修正
                     st.warning("📡 正在連線定位系統...")
+            else:
+                st.info("👆 請點擊上方大按鈕開始")
+        
+        # 手動校正
+        with st.expander("🔧 定位不準？手動切換行政區"):
+            kaohsiung_coords = {
+                "楠梓區": {"lat": 22.7268, "lon": 120.2975},
+                "左營區": {"lat": 22.6800, "lon": 120.3000},
+                "三民區": {"lat": 22.6496, "lon": 120.3292},
+                "鼓山區": {"lat": 22.6368, "lon": 120.2795},
+                "苓雅區": {"lat": 22.6204, "lon": 120.3123},
+                "新興區": {"lat": 22.6293, "lon": 120.3023},
+                "前金區": {"lat": 22.6277, "lon": 120.2936},
+                "鹽埕區": {"lat": 22.6247, "lon": 120.2835},
+                "前鎮區": {"lat": 22.5864, "lon": 120.3180},
+                "旗津區": {"lat": 22.5694, "lon": 120.2778},
+                "小港區": {"lat": 22.5656, "lon": 120.3542},
+                "鳳山區": {"lat": 22.6269, "lon": 120.3574},
+                "鳥松區": {"lat": 22.6593, "lon": 120.3639},
+                "仁武區": {"lat": 22.7016, "lon": 120.3468},
+                "大社區": {"lat": 22.7315, "lon": 120.3475},
+                "大寮區": {"lat": 22.6053, "lon": 120.3957},
+                "林園區": {"lat": 22.5029, "lon": 120.3949},
+                "大樹區": {"lat": 22.6937, "lon": 120.4334},
+                "橋頭區": {"lat": 22.7575, "lon": 120.3056},
+                "岡山區": {"lat": 22.7960, "lon": 120.2960},
+                "路竹區": {"lat": 22.8546, "lon": 120.2612},
+                "阿蓮區": {"lat": 22.8837, "lon": 120.3274},
+                "湖內區": {"lat": 22.9037, "lon": 120.2223},
+                "茄萣區": {"lat": 22.9064, "lon": 120.1824},
+                "永安區": {"lat": 22.8202, "lon": 120.2272},
+                "彌陀區": {"lat": 22.7828, "lon": 120.2452},
+                "梓官區": {"lat": 22.7607, "lon": 120.2657},
+                "燕巢區": {"lat": 22.7932, "lon": 120.3606},
+                "田寮區": {"lat": 22.8753, "lon": 120.3619},
+                "旗山區": {"lat": 22.8885, "lon": 120.4822},
+                "美濃區": {"lat": 22.9006, "lon": 120.5376},
+                "內門區": {"lat": 22.9464, "lon": 120.4578},
+                "杉林區": {"lat": 22.9696, "lon": 120.5332},
+                "甲仙區": {"lat": 23.0841, "lon": 120.5898},
+                "六龜區": {"lat": 23.0033, "lon": 120.6333},
+                "茂林區": {"lat": 22.8906, "lon": 120.6623},
+                "桃源區": {"lat": 23.1593, "lon": 120.7634},
+                "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
+            }
+            manual_area = st.selectbox(
+                "👇 點此選擇正確區域：",
+                list(kaohsiung_coords.keys())
+            )
             
-            # 手動切換
-            with st.expander("🔧 定位不準？手動切換行政區"):
-                kaohsiung_coords = {
-                    "楠梓區": {"lat": 22.7268, "lon": 120.2975},
-                    "左營區": {"lat": 22.6800, "lon": 120.3000},
-                    "三民區": {"lat": 22.6496, "lon": 120.3292},
-                    "鼓山區": {"lat": 22.6368, "lon": 120.2795},
-                    "苓雅區": {"lat": 22.6204, "lon": 120.3123},
-                    "新興區": {"lat": 22.6293, "lon": 120.3023},
-                    "前金區": {"lat": 22.6277, "lon": 120.2936},
-                    "鹽埕區": {"lat": 22.6247, "lon": 120.2835},
-                    "前鎮區": {"lat": 22.5864, "lon": 120.3180},
-                    "旗津區": {"lat": 22.5694, "lon": 120.2778},
-                    "小港區": {"lat": 22.5656, "lon": 120.3542},
-                    "鳳山區": {"lat": 22.6269, "lon": 120.3574},
-                    "鳥松區": {"lat": 22.6593, "lon": 120.3639},
-                    "仁武區": {"lat": 22.7016, "lon": 120.3468},
-                    "大社區": {"lat": 22.7315, "lon": 120.3475},
-                    "大寮區": {"lat": 22.6053, "lon": 120.3957},
-                    "林園區": {"lat": 22.5029, "lon": 120.3949},
-                    "大樹區": {"lat": 22.6937, "lon": 120.4334},
-                    "橋頭區": {"lat": 22.7575, "lon": 120.3056},
-                    "岡山區": {"lat": 22.7960, "lon": 120.2960},
-                    "路竹區": {"lat": 22.8546, "lon": 120.2612},
-                    "阿蓮區": {"lat": 22.8837, "lon": 120.3274},
-                    "湖內區": {"lat": 22.9037, "lon": 120.2223},
-                    "茄萣區": {"lat": 22.9064, "lon": 120.1824},
-                    "永安區": {"lat": 22.8202, "lon": 120.2272},
-                    "彌陀區": {"lat": 22.7828, "lon": 120.2452},
-                    "梓官區": {"lat": 22.7607, "lon": 120.2657},
-                    "燕巢區": {"lat": 22.7932, "lon": 120.3606},
-                    "田寮區": {"lat": 22.8753, "lon": 120.3619},
-                    "旗山區": {"lat": 22.8885, "lon": 120.4822},
-                    "美濃區": {"lat": 22.9006, "lon": 120.5376},
-                    "內門區": {"lat": 22.9464, "lon": 120.4578},
-                    "杉林區": {"lat": 22.9696, "lon": 120.5332},
-                    "甲仙區": {"lat": 23.0841, "lon": 120.5898},
-                    "六龜區": {"lat": 23.0033, "lon": 120.6333},
-                    "茂林區": {"lat": 22.8906, "lon": 120.6623},
-                    "桃源區": {"lat": 23.1593, "lon": 120.7634},
-                    "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
-                }
-                manual_area = st.selectbox("選擇區域：", list(kaohsiung_coords.keys()))
-                if st.button("確認切換"):
-                    st.session_state.current_pos = kaohsiung_coords[manual_area]
-                    st.session_state.location_name = manual_area
-                    st.rerun()
+            if not st.session_state.gps_activated:
+                current_user_pos = kaohsiung_coords[manual_area]
+                st.info(f"📍 已手動切換至：{manual_area}")
 
-        with col_map_view:
-            # 即時地圖
-            m_preview = folium.Map(location=[st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], zoom_start=13)
-            folium.Marker(
-                [st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], 
-                icon=folium.Icon(color="blue", icon="user"), 
-                popup="您的位置"
-            ).add_to(m_preview)
-            
-            if HOSPITALS_DB:
-                for h in HOSPITALS_DB:
-                    folium.CircleMarker(
-                        location=[h['lat'], h['lon']],
-                        radius=5, color="green", fill=True, fill_opacity=0.6,
-                        tooltip=h['name']
-                    ).add_to(m_preview)
-            
-            components.html(m_preview._repr_html_(), height=250)
+        # 3. 預覽地圖
+        m_preview = folium.Map(location=[current_user_pos["lat"], current_user_pos["lon"]], zoom_start=13)
+        folium.Marker(
+            [current_user_pos["lat"], current_user_pos["lon"]], 
+            icon=folium.Icon(color="blue", icon="user"), 
+            popup="您的位置"
+        ).add_to(m_preview)
+        
+        if HOSPITALS_DB:
+            for h in HOSPITALS_DB:
+                folium.CircleMarker(
+                    location=[h['lat'], h['lon']],
+                    radius=5, color="green", fill=True, fill_opacity=0.6,
+                    tooltip=h['name']
+                ).add_to(m_preview)
+                
+        components.html(m_preview._repr_html_(), height=250)
 
-    # ====== 區塊 2: AI 諮詢 (下方) ======
-    st.write("") 
-    with st.container(border=True):
-        st.markdown('<div class="step-header">💬 第二步：AI 醫療諮詢</div>', unsafe_allow_html=True)
+    # ====== 左側：AI 對話 ======
+    with col_chat:
+        st.markdown("### 💬 AI 醫療助理")
         
         if "messages" not in st.session_state:
             st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
@@ -385,7 +406,7 @@ with tab_home:
             st.chat_message("user").write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("🧠 AI 正在分析並搜尋最近的資源..."):
+                with st.spinner("🧠 AI 正在分析並搜尋全台資源..."):
                     reply_text, urgency_level, animal_type, search_keywords = get_gemini_response(prompt)
                     st.write(reply_text)
                     st.session_state.messages.append({"role": "assistant", "content": reply_text})
@@ -393,16 +414,16 @@ with tab_home:
                     vip_hospitals = []
                     min_dist = 9999
                     
-                    # --- 邏輯修正：改為全搜 + 排序 (解決偏鄉無結果問題) ---
+                    # --- 🔥 修正：邏輯重構 (偏鄉友善) ---
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
-                            # 1. 算出每個醫院的距離
-                            dist = calculate_distance(st.session_state.current_pos['lat'], st.session_state.current_pos['lon'], h['lat'], h['lon'])
+                            # 1. 算出距離
+                            dist = calculate_distance(current_user_pos['lat'], current_user_pos['lon'], h['lat'], h['lon'])
                             h['distance_km'] = round(dist, 1)
                             
                             if dist < min_dist: min_dist = dist
                             
-                            # 2. 判斷科別
+                            # 2. 判斷科別匹配
                             tags_str = str(h['tags'])
                             is_match = False
                             if animal_type in tags_str or any(k in tags_str for k in search_keywords.split()):
@@ -410,21 +431,21 @@ with tab_home:
                             if urgency_level == "high" and ("24H" in tags_str or "急診" in tags_str):
                                 is_match = True
                             
-                            # 3. 只要符合科別，全部加入 (不設 10km 門檻)
-                            if is_match:
+                            # 3. 🔥 關鍵修改：只要科別對，不論距離多遠都加入 (移除 dist < 10.0)
+                            if is_match: 
                                 vip_hospitals.append(h)
 
-                    # 4. 依照距離排序 (由近到遠)
+                    # 4. 排序：由近到遠
                     vip_hospitals.sort(key=lambda x: x['distance_km'])
                     
-                    # 5. 只取前 5 家最近的 (避免列表太長)
+                    # 5. 取前 5 家最近的
                     display_hospitals = vip_hospitals[:5]
 
                     st.markdown("---")
                     
                     if min_dist > 20:
-                        st.warning(f"⚠️ 距離您最近的專科醫院約 **{int(min_dist)} 公里**。")
-                        st.caption("建議您確認定位是否準確，或擴大搜尋範圍。")
+                        st.warning(f"⚠️ 偵測到最近的專科醫院距離您 **{int(min_dist)} 公里**。")
+                        st.caption("這可能是因為您位於偏遠地區，或定位尚未準確。系統已為您列出最近的選擇。")
 
                     if urgency_level == "high":
                         st.error(f"🚨 高度緊急！AI 建議搜尋：{search_keywords}")
@@ -458,7 +479,7 @@ with tab_home:
                         st.warning(f"⚠️ 資料庫中暫無 **{animal_type}** 相關醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    # ✅ 修正：使用 Google Query API
+                    # ✅ 修正：使用 Google Search API (3D按鈕)
                     gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
@@ -500,8 +521,9 @@ with tab_news:
             st.write("兔子 24 小時不吃草就有生命危險！學會判斷腸胃停滯的早期徵兆。")
             st.button("閱讀全文", key="b2")
 
-# --- TAB 3: 關於 (依照您的要求修改) ---
+# --- TAB 3: 關於 ---
 with tab_about:
+    # ✅ 文案修正
     st.markdown("""
     ### 關於 PetMatch
     我們致力於解決寵物就醫焦慮症的問題，讓寶貝就醫更明確，減少延誤即早恢復健康。
