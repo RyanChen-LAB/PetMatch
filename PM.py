@@ -9,80 +9,98 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 強制顯色與 3D 按鈕樣式 ======
+# ====== 🎨 CSS 終極修復：強制淺色模式 + 分頁文字可見 ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
     
-    /* 1. 全域強制設定：背景淺色，文字深色 */
+    /* 1. 強制定義淺色主題變數 */
     :root {
         --primary-color: #2A9D8F;
-        --text-color: #d1e0d1;
+        --background-color: #F9F7F2;
+        --secondary-background-color: #F0F2F6;
+        --text-color: #264653;
+        --font: "Noto Sans TC", sans-serif;
     }
-    
+
+    /* 2. 強制全域背景與文字顏色 */
     html, body, [class*="css"], .stApp {
         font-family: 'Noto Sans TC', sans-serif;
         color: #264653 !important;
         background-color: #F9F7F2 !important;
     }
 
-    /* 2. 強制文字顏色，避免手機深色模式隱形 */
+    /* 3. 強制所有文字元素顯色 */
     .stMarkdown p, .stMarkdown span, .stMarkdown div, 
     h1, h2, h3, h4, h5, h6, 
-    label, .stText, .stHtml, .stCaption, .stMarkdown {
+    label, .stText, .stHtml, .stCaption {
         color: #264653 !important;
     }
 
-    /* 3. Hero Header (維持白色) */
+    /* 4. 🔥 關鍵修復：分頁標籤 (Tabs) 文字顏色 🔥 */
+    button[data-baseweb="tab"] div p {
+        color: #264653 !important; /* 強制深色 */
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+    }
+    /* 分頁被選中時的底線顏色 */
+    button[data-baseweb="tab"][aria-selected="true"] {
+        border-bottom-color: #2A9D8F !important;
+    }
+
+    /* 5. 輸入框文字顏色 */
+    .stTextInput input {
+        color: #264653 !important;
+        background-color: #FFFFFF !important;
+    }
+
+    /* 6. Hero Header (改為淺色背景，搭配深色字) */
     .hero-container {
-        background: linear-gradient(120deg, #d4fc79 0%, #96e6a1 100%);
+        /* 清新淺薄荷綠漸層 */
+        background: linear-gradient(120deg, #e0f7fa 0%, #b2dfdb 100%);
         padding: 30px;
         border-radius: 20px;
-        color: white !important;
         text-align: center;
-        box-shadow: 0 10px 20px rgba(42, 157, 143, 0.2);
+        box-shadow: 0 10px 20px rgba(42, 157, 143, 0.1);
         margin-bottom: 25px;
-    }
-    .hero-title { font-family: 'Nunito', sans-serif; font-size: 2.2rem; font-weight: 800; margin: 0; color: #264653 !important; }
-    .hero-subtitle { font-size: 1rem; opacity: 0.9; margin-top: 5px; color: #264653 !important; }
-    
-    /* 4. 🔥 3D 超大定位按鈕專屬樣式 🔥 */
-    /* 針對 Primary Button 做特效 */
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
-        color: white !important;
-        border: none;
-        border-radius: 15px;
-        padding: 20px 10px; /* 加大高度 */
-        font-size: 2.0 rem !important; /* 加大字體 */
-        font-weight: 900 !important;
-        width: 100%;
-        text-shadow: 0px 1px 2px rgba(0,0,0,0.3);
-        
-        /* 3D 立體陰影 */
-        box-shadow: 0 6px 0 #1A6B63, 0 12px 15px rgba(0,0,0,0.2);
-        transition: all 0.1s ease;
-        margin-bottom: 15px;
-    }
-    
-    /* 按下去的效果 */
-    .stButton > button[kind="primary"]:active {
-        transform: translateY(6px); /* 真實下壓感 */
-        box-shadow: 0 0 0 #1A6B63, 0 2px 5px rgba(0,0,0,0.2);
-    }
-    
-    /* 按鈕內的文字強制白色 */
-    .stButton > button p { color: white !important; }
-
-    /* 一般次要按鈕 */
-    .stButton > button[kind="secondary"] {
-        background-color: #ffffff !important;
-        color: #2A9D8F !important;
         border: 2px solid #2A9D8F;
-        border-radius: 12px;
+    }
+    /* 強制標題為深色 (配合淺色背景) */
+    .hero-title { 
+        font-family: 'Nunito', sans-serif; 
+        font-size: 2.2rem; 
+        font-weight: 800; 
+        margin: 0; 
+        color: #264653 !important; 
+    }
+    .hero-subtitle { 
+        font-size: 1rem; 
+        opacity: 0.9; 
+        margin-top: 5px; 
+        font-weight: 600;
+        color: #2A9D8F !important; 
     }
 
-    /* 5. 卡片與氣泡 */
+    /* 7. 按鈕樣式 (維持深色底白字，最清晰) */
+    .stButton > button {
+        background-color: #2A9D8F !important;
+        color: white !important;
+        border-radius: 12px;
+        border: none;
+        padding: 12px 24px;
+        font-weight: bold;
+        width: 100%;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+    }
+    .stButton > button p { color: white !important; } /* 強制按鈕文字白 */
+    
+    .stButton > button:hover {
+        background-color: #21867a !important;
+        transform: translateY(-2px);
+    }
+
+    /* 8. 卡片與氣泡 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -195,12 +213,12 @@ def get_daily_tip():
 
 st.markdown("""
     <div class="hero-container">
-         <div class="hero-title"> 👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
+        <div class="hero-title"> 👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
          <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 側邊欄保持乾淨
+# 側邊欄
 with st.sidebar:
     st.markdown("### ℹ️ 系統狀態")
     if GOOGLE_API_KEY:
@@ -211,11 +229,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"""
     <div class="stat-box" style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
-        <small style="color:#666 !important;">目前資料庫收錄</small><br>
-        <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
+        <small>目前資料庫收錄</small><br>
+        <b>{len(HOSPITALS_DB)}</b> <small>家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v4.9 3D 按鈕版")
+    st.caption("v5.0 介面終極修復")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
@@ -232,19 +250,11 @@ with tab_home:
     with col_map:
         with st.container(border=True):
             st.markdown("### 📍 第一步先定位！")
+            st.caption("請開啟下方開關，讓系統抓取您的位置：")
             
-            # --- 🚀 全新設計：3D 大按鈕取代 Toggle ---
-            # 使用 Session State 記住定位狀態
-            if 'gps_activated' not in st.session_state:
-                st.session_state.gps_activated = False
-
-            # 按鈕：使用 primary 樣式觸發 CSS 3D 特效
-            if st.button("📍 點擊啟用 GPS 自動定位", type="primary", use_container_width=True):
-                st.session_state.gps_activated = True
-                st.rerun() # 立即刷新執行定位
-
-            # 執行定位邏輯
-            if st.session_state.gps_activated:
+            use_gps = st.toggle("✅ 啟用自動定位", value=False)
+            
+            if use_gps:
                 gps_location = get_geolocation(component_key='get_loc')
                 
                 if gps_location and gps_location.get('coords'):
@@ -252,13 +262,11 @@ with tab_home:
                         "lat": gps_location['coords']['latitude'],
                         "lon": gps_location['coords']['longitude']
                     }
-                    st.success("✅ 定位完成！")
+                    st.success("已定位您的位置")
                 else:
-                    st.warning("📡 定位中... 請允許瀏覽器權限")
-            else:
-                st.info("👆 請點擊上方大按鈕開始")
+                    st.info("📡 正在連線定位... 請允許權限")
         
-        # 2. 手動校正 (摺疊)
+        # 手動校正
         with st.expander("🔧 定位不準？手動切換"):
             kaohsiung_coords = {
                 "楠梓區": {"lat": 22.7268, "lon": 120.2975},
@@ -305,7 +313,7 @@ with tab_home:
                 list(kaohsiung_coords.keys())
             )
             
-            if not st.session_state.gps_activated:
+            if not use_gps:
                 current_user_pos = kaohsiung_coords[manual_area]
                 st.info(f"📍 已手動切換至：{manual_area}")
 
@@ -331,13 +339,13 @@ with tab_home:
         st.markdown("### 💬 AI 醫療助理")
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！別緊張我們一步步來，我是 AI 汪汪隊醫助理。請告訴我您的寵物怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        if prompt := st.chat_input("輸入症狀 (例如：守宮不吃東西)..."):
+        if prompt := st.chat_input("輸入症狀 (例如：貓咪不吃東西)..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.chat_message("user").write(prompt)
 
@@ -371,7 +379,7 @@ with tab_home:
                     st.markdown("---")
                     
                     if min_dist > 20:
-                        st.warning(f"⚠️ 最近醫院距離 {int(min_dist)} 公里，定位可能不準，請手動調整。")
+                        st.warning(f"⚠️ 最近醫院距離 {int(min_dist)} 公里，如定位可能不準，請手動調整。")
 
                     if urgency_level == "high":
                         st.error(f"🚨 高度緊急！AI 建議搜尋：{search_keywords}")
@@ -404,7 +412,7 @@ with tab_home:
                         st.warning(f"⚠️ 附近 10 公里內暫無資料庫認證的 **{animal_type}** 醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
+                    gmap_query = f"https://www.google.com/maps/search/?api=1&query=關鍵字{search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
 # --- TAB 2: 衛教專區 ---
@@ -449,6 +457,6 @@ with tab_news:
 with tab_about:
     st.markdown("""
     ### 關於 PetMatch
-    我們致力於解決特殊寵物就醫資訊不透明的問題。
+    我們致力於解決各種寵物就醫資訊，讓寶貝的家人們降低緊張焦慮，根據AI-PetMatch諮詢，正確就醫。
     """)
     st.image("https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=800")
