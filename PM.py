@@ -9,7 +9,7 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 終極修復：強制淺色 + 手機優化 + 3D按鈕 ======
+# ====== 🎨 CSS 終極整合 (修復深色模式提示框) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -37,8 +37,14 @@ st.markdown("""
         color: #264653 !important;
     }
 
-    /* 4. 分頁標籤 (Tabs) 顯色修復 */
-    button[data-baseweb="tab"] { color: #264653 !important; }
+    /* 4. 🔥 提示框文字修復 (Success/Warning/Error) 🔥 */
+    /* 強制提示框內的文字為深色，避免在手機深色模式下變成白色 */
+    .stAlert div[data-testid="stMarkdownContainer"] p {
+        color: #000000 !important; 
+        font-weight: 500;
+    }
+
+    /* 5. 分頁標籤 (Tabs) 顯色修復 */
     button[data-baseweb="tab"] div p {
         color: #264653 !important;
         font-weight: 700 !important;
@@ -48,13 +54,13 @@ st.markdown("""
         border-bottom-color: #2A9D8F !important;
     }
 
-    /* 5. 輸入框文字顏色 */
+    /* 6. 輸入框文字顏色 */
     .stTextInput input {
         color: #264653 !important;
         background-color: #FFFFFF !important;
     }
 
-    /* 6. Hero Header */
+    /* 7. Hero Header (依照您的要求更新) */
     .hero-container {
         background: linear-gradient(120deg, #e0f7fa 0%, #b2dfdb 100%);
         padding: 30px;
@@ -73,15 +79,15 @@ st.markdown("""
         text-shadow: none;
     }
     .hero-subtitle { 
-        font-size: 1rem; 
+        font-size: 1.1rem; 
         opacity: 1; 
-        margin-top: 5px; 
+        margin-top: 8px; 
         font-weight: 700; 
         color: #2A9D8F !important; 
         letter-spacing: 1px; 
     }
 
-    /* 7. 3D 大按鈕 (定位用) */
+    /* 8. 3D 大按鈕 (定位用) */
     .stButton > button[kind="primary"] {
         background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
         color: white !important;
@@ -106,7 +112,7 @@ st.markdown("""
     /* 按鈕內文字強制白 */
     .stButton > button p, .stButton > button div { color: white !important; }
 
-    /* 8. 卡片與氣泡 */
+    /* 9. 卡片與氣泡 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -122,6 +128,16 @@ st.markdown("""
     
     .stat-box small { color: #666 !important; }
     .stat-box b { color: #2A9D8F !important; }
+    
+    /* 步驟標題樣式 */
+    .step-header {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #2A9D8F !important;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #E0E0E0;
+        padding-bottom: 5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -132,23 +148,17 @@ except:
     GOOGLE_API_KEY = "" 
 # ==============================
 
-# --- 工具：計算距離 (安全拆解版) ---
+# --- 工具：計算距離 ---
 def calculate_distance(lat1, lon1, lat2, lon2):
     try:
-        # 將經緯度轉為弧度
         lon1, lat1, lon2, lat2 = map(radians, [float(lon1), float(lat1), float(lon2), float(lat2)])
-        
-        # Haversine 公式
         dlon = lon2 - lon1 
         dlat = lat2 - lat1 
-        
-        # 將長公式拆開，避免複製錯誤
         part1 = sin(dlat/2)**2
         part2 = cos(lat1) * cos(lat2) * sin(dlon/2)**2
         a = part1 + part2
-        
         c = 2 * asin(sqrt(a)) 
-        r = 6371 # 地球半徑 (km)
+        r = 6371 
         return c * r
     except:
         return 9999
@@ -226,14 +236,15 @@ def get_daily_tip():
 # 🖥️ 介面主程式
 # ====================
 
+# 1. Hero Header (依要求修改標題與文案)
 st.markdown("""
     <div class="hero-container">
-        <div class="hero-title"> 👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
+        <div class="hero-title">👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
         <div class="hero-subtitle">專為 🐱貓・🐶狗・🐢特寵 設計的AI醫療導航</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 側邊欄
+# 側邊欄 (系統狀態)
 with st.sidebar:
     st.markdown("### ℹ️ 系統狀態")
     if GOOGLE_API_KEY:
@@ -248,131 +259,133 @@ with st.sidebar:
         <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v5.3 安全修復版")
+    st.caption("v7.0 偏鄉友善版")
 
 # 主畫面分頁
-tab_home, tab_news, tab_about = st.tabs(["🏥 AI智慧導航", "📰 寶貝衛教專區", "ℹ️ 關於我們"])
+tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
 
 # --- TAB 1: 智能導航 ---
 with tab_home:
-    col_chat, col_map = st.columns([2, 1.2])
     
     # 預設位置 (楠梓)
-    default_pos = {"lat": 22.7268, "lon": 120.2975} 
-    current_user_pos = default_pos
+    if 'current_pos' not in st.session_state:
+        st.session_state.current_pos = {"lat": 22.7268, "lon": 120.2975}
+        st.session_state.location_name = "高雄市 (楠梓區)"
 
-    # ====== 右側：地圖與定位 ======
-    with col_map:
-        with st.container(border=True):
-            st.markdown("### 📍 第一步先定位！")
+    # ====== 區塊 1: 定位與地圖 (上方) ======
+    with st.container(border=True):
+        st.markdown('<div class="step-header">📍 第一步：確認您的位置</div>', unsafe_allow_html=True)
+        
+        col_gps_btn, col_map_view = st.columns([1, 2])
+        
+        with col_gps_btn:
+            st.write("請先定位，AI 將為您尋找最近的資源：")
             
-            # --- 🚀 3D 大按鈕邏輯 ---
             if 'gps_activated' not in st.session_state:
                 st.session_state.gps_activated = False
 
-            if st.button("📍 點擊啟用自動定位", type="primary", use_container_width=True):
+            if st.button("📍 點擊啟用 GPS 定位", type="primary", use_container_width=True):
                 st.session_state.gps_activated = True
                 st.rerun()
 
             if st.session_state.gps_activated:
                 gps_location = get_geolocation(component_key='get_loc')
-                
                 if gps_location and gps_location.get('coords'):
-                    current_user_pos = {
+                    st.session_state.current_pos = {
                         "lat": gps_location['coords']['latitude'],
                         "lon": gps_location['coords']['longitude']
                     }
+                    st.session_state.location_name = "GPS 定位位置"
                     st.success("✅ 已定位成功！")
                 else:
-                    st.warning("📡 正在連線定位系統... 請允許權限")
-            else:
-                st.info("👆 請點擊上方大按鈕開始")
-        
-        # 手動校正 (摺疊)
-        with st.expander("🔧 定位不準？手動切換"):
-            kaohsiung_coords = {
-                "楠梓區": {"lat": 22.7268, "lon": 120.2975},
-                "左營區": {"lat": 22.6800, "lon": 120.3000},
-                "三民區": {"lat": 22.6496, "lon": 120.3292},
-                "鼓山區": {"lat": 22.6368, "lon": 120.2795},
-                "苓雅區": {"lat": 22.6204, "lon": 120.3123},
-                "新興區": {"lat": 22.6293, "lon": 120.3023},
-                "前金區": {"lat": 22.6277, "lon": 120.2936},
-                "鹽埕區": {"lat": 22.6247, "lon": 120.2835},
-                "前鎮區": {"lat": 22.5864, "lon": 120.3180},
-                "旗津區": {"lat": 22.5694, "lon": 120.2778},
-                "小港區": {"lat": 22.5656, "lon": 120.3542},
-                "鳳山區": {"lat": 22.6269, "lon": 120.3574},
-                "鳥松區": {"lat": 22.6593, "lon": 120.3639},
-                "仁武區": {"lat": 22.7016, "lon": 120.3468},
-                "大社區": {"lat": 22.7315, "lon": 120.3475},
-                "大寮區": {"lat": 22.6053, "lon": 120.3957},
-                "林園區": {"lat": 22.5029, "lon": 120.3949},
-                "大樹區": {"lat": 22.6937, "lon": 120.4334},
-                "橋頭區": {"lat": 22.7575, "lon": 120.3056},
-                "岡山區": {"lat": 22.7960, "lon": 120.2960},
-                "路竹區": {"lat": 22.8546, "lon": 120.2612},
-                "阿蓮區": {"lat": 22.8837, "lon": 120.3274},
-                "湖內區": {"lat": 22.9037, "lon": 120.2223},
-                "茄萣區": {"lat": 22.9064, "lon": 120.1824},
-                "永安區": {"lat": 22.8202, "lon": 120.2272},
-                "彌陀區": {"lat": 22.7828, "lon": 120.2452},
-                "梓官區": {"lat": 22.7607, "lon": 120.2657},
-                "燕巢區": {"lat": 22.7932, "lon": 120.3606},
-                "田寮區": {"lat": 22.8753, "lon": 120.3619},
-                "旗山區": {"lat": 22.8885, "lon": 120.4822},
-                "美濃區": {"lat": 22.9006, "lon": 120.5376},
-                "內門區": {"lat": 22.9464, "lon": 120.4578},
-                "杉林區": {"lat": 22.9696, "lon": 120.5332},
-                "甲仙區": {"lat": 23.0841, "lon": 120.5898},
-                "六龜區": {"lat": 23.0033, "lon": 120.6333},
-                "茂林區": {"lat": 22.8906, "lon": 120.6623},
-                "桃源區": {"lat": 23.1593, "lon": 120.7634},
-                "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
-            }
-            manual_area = st.selectbox(
-                "👇 點此選擇正確區域：",
-                list(kaohsiung_coords.keys())
-            )
+                    # 修正：更新警告文字
+                    st.warning("📡 正在連線定位系統...")
             
-            if not st.session_state.gps_activated:
-                current_user_pos = kaohsiung_coords[manual_area]
-                st.info(f"📍 已手動切換至：{manual_area}")
+            # 手動切換
+            with st.expander("🔧 定位不準？手動切換行政區"):
+                kaohsiung_coords = {
+                    "楠梓區": {"lat": 22.7268, "lon": 120.2975},
+                    "左營區": {"lat": 22.6800, "lon": 120.3000},
+                    "三民區": {"lat": 22.6496, "lon": 120.3292},
+                    "鼓山區": {"lat": 22.6368, "lon": 120.2795},
+                    "苓雅區": {"lat": 22.6204, "lon": 120.3123},
+                    "新興區": {"lat": 22.6293, "lon": 120.3023},
+                    "前金區": {"lat": 22.6277, "lon": 120.2936},
+                    "鹽埕區": {"lat": 22.6247, "lon": 120.2835},
+                    "前鎮區": {"lat": 22.5864, "lon": 120.3180},
+                    "旗津區": {"lat": 22.5694, "lon": 120.2778},
+                    "小港區": {"lat": 22.5656, "lon": 120.3542},
+                    "鳳山區": {"lat": 22.6269, "lon": 120.3574},
+                    "鳥松區": {"lat": 22.6593, "lon": 120.3639},
+                    "仁武區": {"lat": 22.7016, "lon": 120.3468},
+                    "大社區": {"lat": 22.7315, "lon": 120.3475},
+                    "大寮區": {"lat": 22.6053, "lon": 120.3957},
+                    "林園區": {"lat": 22.5029, "lon": 120.3949},
+                    "大樹區": {"lat": 22.6937, "lon": 120.4334},
+                    "橋頭區": {"lat": 22.7575, "lon": 120.3056},
+                    "岡山區": {"lat": 22.7960, "lon": 120.2960},
+                    "路竹區": {"lat": 22.8546, "lon": 120.2612},
+                    "阿蓮區": {"lat": 22.8837, "lon": 120.3274},
+                    "湖內區": {"lat": 22.9037, "lon": 120.2223},
+                    "茄萣區": {"lat": 22.9064, "lon": 120.1824},
+                    "永安區": {"lat": 22.8202, "lon": 120.2272},
+                    "彌陀區": {"lat": 22.7828, "lon": 120.2452},
+                    "梓官區": {"lat": 22.7607, "lon": 120.2657},
+                    "燕巢區": {"lat": 22.7932, "lon": 120.3606},
+                    "田寮區": {"lat": 22.8753, "lon": 120.3619},
+                    "旗山區": {"lat": 22.8885, "lon": 120.4822},
+                    "美濃區": {"lat": 22.9006, "lon": 120.5376},
+                    "內門區": {"lat": 22.9464, "lon": 120.4578},
+                    "杉林區": {"lat": 22.9696, "lon": 120.5332},
+                    "甲仙區": {"lat": 23.0841, "lon": 120.5898},
+                    "六龜區": {"lat": 23.0033, "lon": 120.6333},
+                    "茂林區": {"lat": 22.8906, "lon": 120.6623},
+                    "桃源區": {"lat": 23.1593, "lon": 120.7634},
+                    "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
+                }
+                manual_area = st.selectbox("選擇區域：", list(kaohsiung_coords.keys()))
+                if st.button("確認切換"):
+                    st.session_state.current_pos = kaohsiung_coords[manual_area]
+                    st.session_state.location_name = manual_area
+                    st.rerun()
 
-        # 3. 預覽地圖
-        m_preview = folium.Map(location=[current_user_pos["lat"], current_user_pos["lon"]], zoom_start=13)
-        folium.Marker(
-            [current_user_pos["lat"], current_user_pos["lon"]], 
-            icon=folium.Icon(color="blue", icon="user"), 
-            popup="您的位置"
-        ).add_to(m_preview)
-        
-        if HOSPITALS_DB:
-            for h in HOSPITALS_DB:
-                folium.CircleMarker(
-                    location=[h['lat'], h['lon']],
-                    radius=5, color="green", fill=True, fill_opacity=0.7
-                ).add_to(m_preview)
-                
-        components.html(m_preview._repr_html_(), height=250)
+        with col_map_view:
+            # 即時地圖
+            m_preview = folium.Map(location=[st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], zoom_start=13)
+            folium.Marker(
+                [st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], 
+                icon=folium.Icon(color="blue", icon="user"), 
+                popup="您的位置"
+            ).add_to(m_preview)
+            
+            if HOSPITALS_DB:
+                for h in HOSPITALS_DB:
+                    folium.CircleMarker(
+                        location=[h['lat'], h['lon']],
+                        radius=5, color="green", fill=True, fill_opacity=0.6,
+                        tooltip=h['name']
+                    ).add_to(m_preview)
+            
+            components.html(m_preview._repr_html_(), height=250)
 
-    # ====== 左側：AI 對話 ======
-    with col_chat:
-        st.markdown("### 💬 AI 汪汪醫療助理")
+    # ====== 區塊 2: AI 諮詢 (下方) ======
+    st.write("") 
+    with st.container(border=True):
+        st.markdown('<div class="step-header">💬 第二步：AI 醫療諮詢</div>', unsafe_allow_html=True)
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是汪汪隊AI醫療助理，先別緊張。請告訴我寶貝怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        if prompt := st.chat_input("輸入症狀 (例如：貓咪一直不吃東西)..."):
+        if prompt := st.chat_input("輸入症狀 (例如：守宮不吃東西)..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.chat_message("user").write(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("🧠 AI 正在分析並搜尋 10km 內資源..."):
+                with st.spinner("🧠 AI 正在分析並搜尋最近的資源..."):
                     reply_text, urgency_level, animal_type, search_keywords = get_gemini_response(prompt)
                     st.write(reply_text)
                     st.session_state.messages.append({"role": "assistant", "content": reply_text})
@@ -380,12 +393,16 @@ with tab_home:
                     vip_hospitals = []
                     min_dist = 9999
                     
+                    # --- 邏輯修正：改為全搜 + 排序 (解決偏鄉無結果問題) ---
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
-                            dist = calculate_distance(current_user_pos['lat'], current_user_pos['lon'], h['lat'], h['lon'])
+                            # 1. 算出每個醫院的距離
+                            dist = calculate_distance(st.session_state.current_pos['lat'], st.session_state.current_pos['lon'], h['lat'], h['lon'])
                             h['distance_km'] = round(dist, 1)
+                            
                             if dist < min_dist: min_dist = dist
                             
+                            # 2. 判斷科別
                             tags_str = str(h['tags'])
                             is_match = False
                             if animal_type in tags_str or any(k in tags_str for k in search_keywords.split()):
@@ -393,25 +410,31 @@ with tab_home:
                             if urgency_level == "high" and ("24H" in tags_str or "急診" in tags_str):
                                 is_match = True
                             
-                            if is_match and dist < 10.0: 
+                            # 3. 只要符合科別，全部加入 (不設 10km 門檻)
+                            if is_match:
                                 vip_hospitals.append(h)
 
+                    # 4. 依照距離排序 (由近到遠)
                     vip_hospitals.sort(key=lambda x: x['distance_km'])
+                    
+                    # 5. 只取前 5 家最近的 (避免列表太長)
+                    display_hospitals = vip_hospitals[:5]
 
                     st.markdown("---")
                     
                     if min_dist > 20:
-                        st.warning(f"⚠️ 最近醫院距離 {int(min_dist)} 公里，定位可能不準，請手動調整。")
+                        st.warning(f"⚠️ 距離您最近的專科醫院約 **{int(min_dist)} 公里**。")
+                        st.caption("建議您確認定位是否準確，或擴大搜尋範圍。")
 
                     if urgency_level == "high":
                         st.error(f"🚨 高度緊急！AI 建議搜尋：{search_keywords}")
                     else:
                         st.info(f"ℹ️ 醫療建議類別：{animal_type}")
 
-                    # --- 推薦結果 ---
-                    if vip_hospitals:
-                        st.subheader(f"🏆 10公里內推薦 ({len(vip_hospitals)} 家)")
-                        for h in vip_hospitals:
+                    # --- 推薦結果列表 ---
+                    if display_hospitals:
+                        st.subheader(f"🏆 距離最近的 {len(display_hospitals)} 家醫院")
+                        for h in display_hospitals:
                             with st.container():
                                 c1, c2 = st.columns([3, 1])
                                 with c1:
@@ -427,14 +450,16 @@ with tab_home:
                                     st.markdown(tags_html, unsafe_allow_html=True)
                                 with c2:
                                     st.write("")
+                                    # ✅ 修正：使用 Google Navigation API (強制導航模式)
                                     link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("") 
                     else:
-                        st.warning(f"⚠️ 附近 10 公里內暫無資料庫認證的 **{animal_type}** 醫院。")
+                        st.warning(f"⚠️ 資料庫中暫無 **{animal_type}** 相關醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    gmap_query = f"https://www.google.com/maps/search/?api=1&query=關鍵字{search_keywords}"
+                    # ✅ 修正：使用 Google Query API
+                    gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
 # --- TAB 2: 衛教專區 ---
@@ -475,7 +500,7 @@ with tab_news:
             st.write("兔子 24 小時不吃草就有生命危險！學會判斷腸胃停滯的早期徵兆。")
             st.button("閱讀全文", key="b2")
 
-# --- TAB 3: 關於 ---
+# --- TAB 3: 關於 (依照您的要求修改) ---
 with tab_about:
     st.markdown("""
     ### 關於 PetMatch
