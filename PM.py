@@ -17,7 +17,7 @@ st.markdown("""
     /* 1. 全域強制設定：背景淺色，文字深色 */
     :root {
         --primary-color: #2A9D8F;
-        --text-color: #264653;
+        --text-color: #d1e0d1;
     }
     
     html, body, [class*="css"], .stApp {
