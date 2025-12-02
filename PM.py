@@ -407,7 +407,7 @@ with tab_home:
         st.markdown('<div class="step-header">💬 第二步：AI 醫療諮詢</div>', unsafe_allow_html=True)
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是姜柏妘化身的 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
