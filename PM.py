@@ -9,7 +9,7 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 介面終極修復 (v9.0) ======
+# ====== 🎨 CSS 介面終極修復 (v10.0 垂直版) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -37,15 +37,14 @@ st.markdown("""
         color: #264653 !important;
     }
 
-    /* 4. 🔥 關鍵修復：Toggle 開關與 Checkbox 文字 🔥 */
+    /* 4. Toggle 開關與 Checkbox 文字 */
     label[data-testid="stWidgetLabel"] p {
         color: #264653 !important;
         font-weight: 700;
         font-size: 1.1rem;
     }
     
-    /* 5. 🔥 關鍵修復：提示框 (Success/Warning) 文字 🔥 */
-    /* 確保綠色/黃色框框內的文字是深色，手機深色模式才看得到 */
+    /* 5. 提示框 (Success/Warning) 文字 */
     div[data-testid="stAlert"] p, div[data-testid="stAlert"] div {
         color: #000000 !important; 
         font-weight: 500;
@@ -257,7 +256,7 @@ def get_daily_tip():
 # 🖥️ 介面主程式
 # ====================
 
-# 1. Hero Header (文案修正)
+# 1. Hero Header
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">👨🏻‍⚕️ PetMatch AI智慧寵心導航</div>
@@ -265,7 +264,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 側邊欄
+# 側邊欄 (系統狀態)
 with st.sidebar:
     st.markdown("### ℹ️ 系統狀態")
     if GOOGLE_API_KEY:
@@ -280,48 +279,46 @@ with st.sidebar:
         <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v9.0 終極完美版")
+    st.caption("v10.0 旗艦垂直版")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
 
 # --- TAB 1: 智能導航 ---
 with tab_home:
-    col_chat, col_map = st.columns([2, 1.2])
     
-    # 預設位置 (楠梓)
-    default_pos = {"lat": 22.7268, "lon": 120.2975} 
-    current_user_pos = default_pos
+    # 初始化 Session State
+    if 'current_pos' not in st.session_state:
+        st.session_state.current_pos = {"lat": 22.7268, "lon": 120.2975} # 預設楠梓
+        st.session_state.location_name = "高雄市 (楠梓區)"
+    if 'gps_activated' not in st.session_state:
+        st.session_state.gps_activated = False
 
-    # ====== 右側：地圖與定位 ======
-    with col_map:
-        with st.container(border=True):
-            st.markdown("### 📍 第一步先定位！")
-            
-            # --- 3D 大按鈕 (文案修正) ---
-            if 'gps_activated' not in st.session_state:
-                st.session_state.gps_activated = False
-
-            if st.button("📍 點擊啟用定位系統", type="primary", use_container_width=True):
-                st.session_state.gps_activated = True
-                st.rerun()
-
-            if st.session_state.gps_activated:
-                gps_location = get_geolocation(component_key='get_loc')
-                
-                if gps_location and gps_location.get('coords'):
-                    current_user_pos = {
-                        "lat": gps_location['coords']['latitude'],
-                        "lon": gps_location['coords']['longitude']
-                    }
-                    st.success("✅ 已完成您的定位")
-                else:
-                    # 文案修正
-                    st.warning("📡 正在連線定位系統...")
-            else:
-                st.info("👆 請點擊上方大按鈕開始")
+    # ====================================================
+    # ⬆️ 上方區域：定位確認與地圖 (UI/UX 修正：先定位)
+    # ====================================================
+    with st.container(border=True):
+        st.markdown('<div class="step-header">📍 第一步：確認您的位置</div>', unsafe_allow_html=True)
+        st.write("請先點擊下方按鈕進行定位，或使用手動切換功能：")
         
-        # 手動校正
+        # 3D 定位按鈕
+        if st.button("📍 點擊啟用定位系統", type="primary", use_container_width=True):
+            st.session_state.gps_activated = True
+            st.rerun()
+
+        # 定位邏輯
+        if st.session_state.gps_activated:
+            gps_location = get_geolocation(component_key='get_loc')
+            if gps_location and gps_location.get('coords'):
+                st.session_state.current_pos = {
+                    "lat": gps_location['coords']['latitude'],
+                    "lon": gps_location['coords']['longitude']
+                }
+                st.success("✅ 已定位成功！")
+            else:
+                st.warning("📡 正在連線定位系統...")
+        
+        # 摺疊式手動切換
         with st.expander("🔧 定位不準？手動切換行政區"):
             kaohsiung_coords = {
                 "楠梓區": {"lat": 22.7268, "lon": 120.2975},
@@ -364,18 +361,20 @@ with tab_home:
                 "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
             }
             manual_area = st.selectbox(
-                "👇 點此選擇正確區域：",
+                "👇 或直接選擇區域：",
                 list(kaohsiung_coords.keys())
             )
             
-            if not st.session_state.gps_activated:
-                current_user_pos = kaohsiung_coords[manual_area]
-                st.info(f"📍 已手動切換至：{manual_area}")
+            if st.button("確認切換區域"):
+                st.session_state.current_pos = kaohsiung_coords[manual_area]
+                st.session_state.location_name = manual_area
+                st.session_state.gps_activated = False
+                st.rerun()
 
-        # 3. 預覽地圖
-        m_preview = folium.Map(location=[current_user_pos["lat"], current_user_pos["lon"]], zoom_start=13)
+        # 即時地圖 (放在上方)
+        m_preview = folium.Map(location=[st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], zoom_start=14)
         folium.Marker(
-            [current_user_pos["lat"], current_user_pos["lon"]], 
+            [st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], 
             icon=folium.Icon(color="blue", icon="user"), 
             popup="您的位置"
         ).add_to(m_preview)
@@ -387,21 +386,24 @@ with tab_home:
                     radius=5, color="green", fill=True, fill_opacity=0.6,
                     tooltip=h['name']
                 ).add_to(m_preview)
-                
+        
         components.html(m_preview._repr_html_(), height=250)
 
-    # ====== 左側：AI 對話 ======
-    with col_chat:
-        st.markdown("### 💬 AI 醫療助理")
+    # ====================================================
+    # ⬇️ 下方區域：AI 諮詢 (垂直排列)
+    # ====================================================
+    st.write("") 
+    with st.container(border=True):
+        st.markdown('<div class="step-header">💬 第二步：AI 醫療諮詢</div>', unsafe_allow_html=True)
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！別緊張，我是 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        if prompt := st.chat_input("輸入症狀 (例如：守宮不吃東西)..."):
+        if prompt := st.chat_input("輸入症狀 (例如：我的貓咪不吃東西)..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.chat_message("user").write(prompt)
 
@@ -414,16 +416,16 @@ with tab_home:
                     vip_hospitals = []
                     min_dist = 9999
                     
-                    # --- 🔥 修正：邏輯重構 (偏鄉友善) ---
+                    # --- 邏輯：全搜 + 排序 (移除距離門檻) ---
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
                             # 1. 算出距離
-                            dist = calculate_distance(current_user_pos['lat'], current_user_pos['lon'], h['lat'], h['lon'])
+                            dist = calculate_distance(st.session_state.current_pos['lat'], st.session_state.current_pos['lon'], h['lat'], h['lon'])
                             h['distance_km'] = round(dist, 1)
                             
                             if dist < min_dist: min_dist = dist
                             
-                            # 2. 判斷科別匹配
+                            # 2. 判斷科別
                             tags_str = str(h['tags'])
                             is_match = False
                             if animal_type in tags_str or any(k in tags_str for k in search_keywords.split()):
@@ -431,20 +433,21 @@ with tab_home:
                             if urgency_level == "high" and ("24H" in tags_str or "急診" in tags_str):
                                 is_match = True
                             
-                            # 3. 🔥 關鍵修改：只要科別對，不論距離多遠都加入 (移除 dist < 10.0)
-                            if is_match: 
+                            # 3. 只要符合科別，就列入 (不論多遠)
+                            if is_match:
                                 vip_hospitals.append(h)
 
-                    # 4. 排序：由近到遠
+                    # 4. 排序
                     vip_hospitals.sort(key=lambda x: x['distance_km'])
                     
-                    # 5. 取前 5 家最近的
+                    # 5. 取前 5 家
                     display_hospitals = vip_hospitals[:5]
 
                     st.markdown("---")
                     
+                    # 智慧提示
                     if min_dist > 20:
-                        st.warning(f"⚠️ 偵測到最近的專科醫院距離您 **{int(min_dist)} 公里**。")
+                        st.warning(f"⚠️ 最近的專科醫院距離您 **{int(min_dist)} 公里**。")
                         st.caption("這可能是因為您位於偏遠地區，或定位尚未準確。系統已為您列出最近的選擇。")
 
                     if urgency_level == "high":
@@ -471,7 +474,7 @@ with tab_home:
                                     st.markdown(tags_html, unsafe_allow_html=True)
                                 with c2:
                                     st.write("")
-                                    # ✅ 修正：使用 Google Navigation API (強制導航模式)
+                                    # ✅ 修正：Google Maps 官方導航連結 (Universal Link)
                                     link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("") 
@@ -479,7 +482,7 @@ with tab_home:
                         st.warning(f"⚠️ 資料庫中暫無 **{animal_type}** 相關醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    # ✅ 修正：使用 Google Search API (3D按鈕)
+                    # ✅ 修正：Google Maps 搜尋連結
                     gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary")
 
@@ -521,9 +524,8 @@ with tab_news:
             st.write("兔子 24 小時不吃草就有生命危險！學會判斷腸胃停滯的早期徵兆。")
             st.button("閱讀全文", key="b2")
 
-# --- TAB 3: 關於 ---
+# --- TAB 3: 關於 (文案更新) ---
 with tab_about:
-    # ✅ 文案修正
     st.markdown("""
     ### 關於 PetMatch
     我們致力於解決寵物就醫焦慮症的問題，讓寶貝就醫更明確，減少延誤即早恢復健康。
