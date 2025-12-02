@@ -92,7 +92,7 @@ st.markdown("""
         letter-spacing: 1px; 
     }
 
-    /* 9. 🔥 3D 按鈕樣式 (綠色 Primary) 🔥 */
+    /* 9. 🔥 3D 按鈕樣式 (綠色 Primary - 定位與確認用) 🔥 */
     .stButton > button[kind="primary"] {
         background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
         color: white !important;
@@ -111,9 +111,8 @@ st.markdown("""
         box-shadow: 0 0 0 #1A6B63, 0 2px 5px rgba(0,0,0,0.2);
     }
     
-    /* 10. 🔥 3D 連結按鈕樣式 (橘色 Secondary - 用於搜尋) 🔥 */
-    /* 修正連結按鈕的樣式，讓它看起來像大按鈕 */
-    .stLinkButton > a {
+    /* 10. 🔥 3D 連結按鈕樣式 (橘色 Secondary - Google搜尋用) 🔥 */
+    .stLinkButton > a[kind="secondary"] {
         background: linear-gradient(to bottom, #E76F51, #D65A3F) !important;
         color: white !important;
         border: none;
@@ -123,20 +122,15 @@ st.markdown("""
         font-weight: 900 !important;
         width: 100%;
         text-align: center;
-        text-decoration: none !important;
+        text-decoration: none;
         display: block;
         box-shadow: 0 6px 0 #A83E26, 0 12px 15px rgba(0,0,0,0.2);
         transition: all 0.1s ease;
-        margin-top: 10px;
     }
-    .stLinkButton > a:active {
+    .stLinkButton > a[kind="secondary"]:active {
         transform: translateY(6px);
         box-shadow: 0 0 0 #A83E26, 0 2px 5px rgba(0,0,0,0.2);
     }
-    .stLinkButton > a:hover {
-        color: white !important;
-    }
-
     /* 按鈕文字強制白 */
     .stButton > button p, .stLinkButton > a { color: white !important; }
 
@@ -375,7 +369,7 @@ with tab_home:
                     list(kaohsiung_coords.keys())
                 )
                 
-                # 🔥 關鍵修正：加上 type="primary" 讓它變綠色按鈕，確保文字可見
+                # 🔥 關鍵修正：加上 type="primary" 確保按鈕可見
                 if st.button("確認切換區域", type="primary"):
                     st.session_state.current_pos = kaohsiung_coords[manual_area]
                     st.session_state.location_name = manual_area
@@ -407,13 +401,13 @@ with tab_home:
         st.markdown('<div class="step-header">💬 第二步：AI 醫療諮詢</div>', unsafe_allow_html=True)
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是姜柏妘化身的 AI 醫療助理。請告訴我您的寵物怎麼了？"}]
+            st.session_state.messages = [{"role": "assistant", "content": "嗨！我是 AI喵醫小助理，請告訴我您的寵物怎麼了？"}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        if prompt := st.chat_input("輸入症狀 (例如：守宮不吃東西)..."):
+        if prompt := st.chat_input("輸入症狀 (例如：貓咪不吃東西)..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             st.chat_message("user").write(prompt)
 
@@ -426,6 +420,7 @@ with tab_home:
                     vip_hospitals = []
                     min_dist = 9999
                     
+                    # --- 邏輯：全搜 + 排序 ---
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
                             dist = calculate_distance(st.session_state.current_pos['lat'], st.session_state.current_pos['lon'], h['lat'], h['lon'])
@@ -440,7 +435,6 @@ with tab_home:
                             if urgency_level == "high" and ("24H" in tags_str or "急診" in tags_str):
                                 is_match = True
                             
-                            # 全搜+排序
                             if is_match:
                                 vip_hospitals.append(h)
 
@@ -450,7 +444,7 @@ with tab_home:
                     st.markdown("---")
                     
                     if min_dist > 20:
-                        st.warning(f"⚠️ 偵測到最近的專科醫院距離您 **{int(min_dist)} 公里**。")
+                        st.warning(f"⚠️ 最近的專科醫院距離您 **{int(min_dist)} 公里**。")
                         st.caption("這可能是因為您位於偏遠地區，或定位尚未準確。系統已為您列出最近的選擇。")
 
                     if urgency_level == "high":
@@ -528,7 +522,7 @@ with tab_news:
             st.write("兔子 24 小時不吃草就有生命危險！學會判斷腸胃停滯的早期徵兆。")
             st.button("閱讀全文", key="b2")
 
-# --- TAB 3: 關於 (依照您的要求修改) ---
+# --- TAB 3: 關於 ---
 with tab_about:
     st.markdown("""
     ### 關於 PetMatch
