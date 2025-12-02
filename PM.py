@@ -9,47 +9,31 @@ from math import radians, cos, sin, asin, sqrt
 # --- 1. 頁面設定 ---
 st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
 
-# ====== 🎨 CSS 強制淺色模式與美化 (v4.8 終極修復) ======
+# ====== 🎨 CSS 強制顯色與 3D 按鈕樣式 ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
     
-    /* 1. 強制覆蓋 Streamlit 的主題變數 (解決手機深色模式問題) */
+    /* 1. 全域強制設定：背景淺色，文字深色 */
     :root {
         --primary-color: #2A9D8F;
-        --background-color: #F9F7F2;
-        --secondary-background-color: #F0F2F6;
         --text-color: #264653;
-        --font: "Noto Sans TC", sans-serif;
     }
-
-    /* 2. 強制全域文字顏色為深色 */
+    
     html, body, [class*="css"], .stApp {
         font-family: 'Noto Sans TC', sans-serif;
         color: #264653 !important;
         background-color: #F9F7F2 !important;
     }
 
-    /* 3. 針對所有可能的文字元素進行強制顯色 */
+    /* 2. 強制文字顏色，避免手機深色模式隱形 */
     .stMarkdown p, .stMarkdown span, .stMarkdown div, 
     h1, h2, h3, h4, h5, h6, 
-    label, .stText, .stHtml, .stCaption {
+    label, .stText, .stHtml, .stCaption, .stMarkdown {
         color: #264653 !important;
     }
 
-    /* 4. 修正輸入框文字顏色 (避免打字時看不到) */
-    .stTextInput input {
-        color: #264653 !important;
-        background-color: #FFFFFF !important;
-    }
-
-    /* 5. 修正 Toggle 開關旁的文字 */
-    div[data-testid="stCheckbox"] label p {
-        color: #264653 !important;
-        font-weight: bold;
-    }
-
-    /* --- Hero Header (維持白色文字) --- */
+    /* 3. Hero Header (維持白色) */
     .hero-container {
         background: linear-gradient(120deg, #264653, #2A9D8F);
         padding: 30px;
@@ -62,32 +46,46 @@ st.markdown("""
     .hero-title { font-family: 'Nunito', sans-serif; font-size: 2.2rem; font-weight: 800; margin: 0; color: white !important; }
     .hero-subtitle { font-size: 1rem; opacity: 0.9; margin-top: 5px; color: white !important; }
     
-    /* 強制 Hero 內的文字不受全域深色影響 */
-    .hero-container h1, .hero-container p, .hero-container div {
-        color: white !important;
-    }
+    /* 強制 Hero 內文字白 */
+    .hero-container * { color: white !important; }
 
-    /* --- 按鈕樣式 --- */
-    .stButton > button {
-        background-color: #2A9D8F !important;
+    /* 4. 🔥 3D 超大定位按鈕專屬樣式 🔥 */
+    /* 針對 Primary Button 做特效 */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
         color: white !important;
-        border-radius: 12px;
         border: none;
-        padding: 12px 24px;
-        font-weight: bold;
+        border-radius: 15px;
+        padding: 20px 10px; /* 加大高度 */
+        font-size: 1.3rem !important; /* 加大字體 */
+        font-weight: 900 !important;
         width: 100%;
-        transition: all 0.2s;
+        text-shadow: 0px 1px 2px rgba(0,0,0,0.3);
+        
+        /* 3D 立體陰影 */
+        box-shadow: 0 6px 0 #1A6B63, 0 12px 15px rgba(0,0,0,0.2);
+        transition: all 0.1s ease;
+        margin-bottom: 15px;
     }
-    .stButton > button:hover {
-        background-color: #21867a !important;
-        transform: translateY(-2px);
+    
+    /* 按下去的效果 */
+    .stButton > button[kind="primary"]:active {
+        transform: translateY(6px); /* 真實下壓感 */
+        box-shadow: 0 0 0 #1A6B63, 0 2px 5px rgba(0,0,0,0.2);
     }
+    
     /* 按鈕內的文字強制白色 */
-    .stButton > button p {
-        color: white !important;
+    .stButton > button p { color: white !important; }
+
+    /* 一般次要按鈕 */
+    .stButton > button[kind="secondary"] {
+        background-color: #ffffff !important;
+        color: #2A9D8F !important;
+        border: 2px solid #2A9D8F;
+        border-radius: 12px;
     }
 
-    /* --- 卡片與氣泡 --- */
+    /* 5. 卡片與氣泡 */
     div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: white !important;
         border-radius: 15px;
@@ -100,7 +98,6 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     
-    /* 統計小卡 */
     .stat-box small { color: #666 !important; }
     .stat-box b { color: #2A9D8F !important; }
 </style>
@@ -217,11 +214,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"""
     <div class="stat-box" style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
-        <small>目前資料庫收錄</small><br>
-        <b>{len(HOSPITALS_DB)}</b> <small>家專科醫院</small>
+        <small style="color:#666 !important;">目前資料庫收錄</small><br>
+        <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v4.8 手機閱讀修復版")
+    st.caption("v4.9 3D 按鈕版")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
@@ -238,12 +235,19 @@ with tab_home:
     with col_map:
         with st.container(border=True):
             st.markdown("### 📍 第一步先定位！")
-            st.caption("請開啟下方開關，讓系統抓取您的位置：")
             
-            # 1. 定位開關
-            use_gps = st.toggle("✅ 啟用 GPS 自動定位", value=False)
-            
-            if use_gps:
+            # --- 🚀 全新設計：3D 大按鈕取代 Toggle ---
+            # 使用 Session State 記住定位狀態
+            if 'gps_activated' not in st.session_state:
+                st.session_state.gps_activated = False
+
+            # 按鈕：使用 primary 樣式觸發 CSS 3D 特效
+            if st.button("📍 點擊啟用 GPS 自動定位", type="primary", use_container_width=True):
+                st.session_state.gps_activated = True
+                st.rerun() # 立即刷新執行定位
+
+            # 執行定位邏輯
+            if st.session_state.gps_activated:
                 gps_location = get_geolocation(component_key='get_loc')
                 
                 if gps_location and gps_location.get('coords'):
@@ -251,9 +255,11 @@ with tab_home:
                         "lat": gps_location['coords']['latitude'],
                         "lon": gps_location['coords']['longitude']
                     }
-                    st.success("已鎖定您的位置")
+                    st.success("✅ 定位完成！")
                 else:
-                    st.info("📡 正在連線衛星... 請允許權限")
+                    st.warning("📡 定位中... 請允許瀏覽器權限")
+            else:
+                st.info("👆 請點擊上方大按鈕開始")
         
         # 2. 手動校正 (摺疊)
         with st.expander("🔧 定位不準？手動切換"):
@@ -302,7 +308,7 @@ with tab_home:
                 list(kaohsiung_coords.keys())
             )
             
-            if not use_gps:
+            if not st.session_state.gps_activated:
                 current_user_pos = kaohsiung_coords[manual_area]
                 st.info(f"📍 已手動切換至：{manual_area}")
 
