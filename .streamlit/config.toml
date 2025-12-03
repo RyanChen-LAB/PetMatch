@@ -1,0 +1,6 @@
+[client]
+toolbarMode = "viewer" # 隱藏開發者選單
+showErrorDetails = false # 隱藏錯誤代碼
+
+[ui]
+hideTopBar = true # 隱藏頂部裝飾條
