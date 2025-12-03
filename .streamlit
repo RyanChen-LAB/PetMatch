@@ -1,6 +1,1 @@
-[client]
-toolbarMode = "viewer" # 將工具列設為觀眾模式 (只顯示必要選項)
-showErrorDetails = false
 
-[ui]
-hideTopBar = true # 這是關鍵！強制隱藏頂部工具列
