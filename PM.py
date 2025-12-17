@@ -16,7 +16,7 @@ st.set_page_config(
     menu_items={'Get Help': None, 'Report a bug': None, 'About': None}
 )
 
-# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v28.0) ======
+# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v29.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -78,30 +78,49 @@ def load_hospitals():
 df_hospitals = load_hospitals()
 HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 
-# --- 🔥 AI Diagnostic Function (顯示真實錯誤) ---
-def test_connection_and_get_error():
-    if not GOOGLE_API_KEY:
-        return False, "未設定 API Key"
+# --- 🔥 新增：智慧連線檢測 (Auto-Switch) ---
+def get_best_model():
+    """測試並回傳第一個可用的模型"""
+    if not GOOGLE_API_KEY: return None, "No API Key"
     
-    try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        # 指定使用您清單中最強的 2.0-flash
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        response = model.generate_content("Hi")
-        if response and response.text:
-            return True, "gemini-2.0-flash"
-    except Exception as e:
-        return False, str(e) # 🔥 回傳完整錯誤訊息
+    # 🔥 關鍵策略：避開已滿的 2.0-flash，改用 Lite 和 Exp
+    candidates = [
+        'gemini-2.0-flash-lite-preview-02-05', # 首選：輕量版 (通常有獨立額度)
+        'gemini-2.0-flash-exp',                # 備用1：實驗版
+        'gemini-flash-latest'                  # 備用2：通用版
+    ]
     
-    return False, "未知錯誤"
+    genai.configure(api_key=GOOGLE_API_KEY)
+    
+    for model_name in candidates:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content("Hi") # 輕量 Ping
+            if response:
+                return model_name, "OK"
+        except Exception as e:
+            continue # 失敗就換下一個
+            
+    return None, "All models busy"
 
-# --- AI Core ---
+# --- AI Core (v29.0: 多重備援) ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY: return "⚠️ 請檢查 API Key", "low", "動物", "動物醫院"
     
+    # 優先使用 session 中已確認的模型，若無則重新檢測
+    active_model = st.session_state.get('active_model_name')
+    if not active_model or "失敗" in active_model:
+        active_model, _ = get_best_model()
+        if active_model:
+            st.session_state['active_model_name'] = active_model
+        else:
+            # 真的全掛了，回傳安全模式
+            return "⚠️ 系統目前流量過載 (429)，請直接參考下方醫院。", "high", "動物", "動物醫院 24H"
+
+    # 使用確認過模型進行回答
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel(active_model)
         
         system_prompt = f"""
         Role: PetMatch Triage System. Task: Analyze input: "{user_input}"
@@ -129,20 +148,21 @@ def get_gemini_response(user_input):
         return clean_reply, urgency, animal_type, search_keywords
         
     except Exception as e:
-        return f"連線錯誤：{str(e)}", "high", "動物", "動物醫院"
+        # 如果中途失敗，強制清除模型狀態，下次會重新尋找
+        st.session_state['active_model_name'] = None
+        return f"連線中斷 ({str(e)})，請重試。", "high", "動物", "動物醫院"
 
 # --- Daily Tip ---
 def get_daily_tip():
-    # 這裡如果不通，就直接顯示預設值，不要報錯
+    if not GOOGLE_API_KEY: return "請設定 API Key"
     try:
-        if GOOGLE_API_KEY:
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
-            return res.text
+        genai.configure(api_key=GOOGLE_API_KEY)
+        # 固定使用 Lite 版，節省主模型額度
+        model = genai.GenerativeModel('gemini-2.0-flash-lite-preview-02-05')
+        res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
+        return res.text
     except:
-        pass
-    return "🐢 陸龜其實很喜歡曬太陽喔！(離線模式)"
+        return "🐢 陸龜其實很喜歡曬太陽喔！(離線知識)"
 
 # ====================
 # 🖥️ Main Interface
@@ -156,40 +176,49 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Sidebar (🔥 診斷模式)
+# Sidebar
 with st.sidebar:
     st.markdown("### ℹ️ 系統狀態")
     
-    # 狀態變數初始化
-    if 'conn_status' not in st.session_state: st.session_state['conn_status'] = "unknown"
-    if 'conn_msg' not in st.session_state: st.session_state['conn_msg'] = "等待測試..."
-
-    # 測試按鈕
-    if st.button("🔄 點此測試 AI 連線", type="primary"):
-        with st.spinner("診斷中..."):
-            success, msg = test_connection_and_get_error()
-            st.session_state['conn_status'] = "ok" if success else "error"
-            st.session_state['conn_msg'] = msg
-
-    # 顯示結果
-    if st.session_state['conn_status'] == "ok":
-        st.success(f"✅ 連線成功：{st.session_state['conn_msg']}")
+    # 自動連線檢查 (只在尚未確認時執行)
+    if 'active_model_name' not in st.session_state:
+        st.session_state['active_model_name'] = None
         
-        st.markdown(f"""
-        <div class="stat-box" style="text-align:center; padding:15px; background:#E8F5E9; border-radius:10px; border: 2px solid #2A9D8F; margin-top:10px;">
-            <b style="color:#2A9D8F;">已收錄專科醫院</b><br>
-            <b style="font-size:1.5rem; color:#2A9D8F;">{len(HOSPITALS_DB)}</b> <small>家</small>
+    if not st.session_state['active_model_name']:
+        with st.spinner("正在切換可用線路..."):
+            model, msg = get_best_model()
+            if model:
+                st.session_state['active_model_name'] = model
+            else:
+                st.session_state['active_model_name'] = "連線失敗"
+
+    # 狀態顯示
+    if st.session_state['active_model_name'] and "失敗" not in st.session_state['active_model_name']:
+        status_html = f"""
+        <div class="stat-box" style="text-align:center; padding:15px; background:#E8F5E9; border-radius:10px; border: 2px solid #2A9D8F;">
+            <b style="color:#2A9D8F;">✅ AI 連線成功</b><br>
+            <small style="color:#666;">目前使用：</small><br>
+            <code style="color:#1B5E20; font-weight:bold;">{st.session_state['active_model_name'].replace('gemini-', '')}</code>
+            <br><br>
+            <small>已收錄專科醫院：</small> <b style="color:#2A9D8F;">{len(HOSPITALS_DB)}</b> <small>家</small>
         </div>
-        """, unsafe_allow_html=True)
-        
-    elif st.session_state['conn_status'] == "error":
-        # 🔥 這裡會顯示紅色的錯誤訊息，請截圖這裡！
-        st.error(f"❌ 連線失敗：\n{st.session_state['conn_msg']}")
-        st.caption("請截圖此錯誤訊息回報。")
+        """
     else:
-        st.info("👆 請點擊上方按鈕進行測試")
+        status_html = f"""
+        <div class="stat-box" style="text-align:center; padding:15px; background:#FFEBEE; border-radius:10px; border: 2px solid #EF5350;">
+            <b style="color:#C62828;">❌ 額度已滿 (429)</b><br>
+            <small>Google 暫時限制了您的請求</small>
+        </div>
+        """
+    
+    st.markdown(status_html, unsafe_allow_html=True)
+    
+    if "失敗" in str(st.session_state['active_model_name']):
+        if st.button("🔄 強制切換線路", type="primary"):
+            st.session_state['active_model_name'] = None # 清除狀態
+            st.rerun() # 重跑
 
-    st.caption("v28.0 診斷修復版")
+    st.caption("v29.0 智慧分流版")
 
 # Tabs
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
@@ -256,7 +285,6 @@ with tab_home:
                     st.write(reply_text)
                     st.session_state.messages.append({"role": "assistant", "content": reply_text})
                     
-                    # Logic
                     vip_hospitals = []
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
