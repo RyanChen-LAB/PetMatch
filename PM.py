@@ -8,7 +8,7 @@ from math import radians, cos, sin, asin, sqrt
 import time
 import random
 
-# --- 1. 頁面設定 (First Line of Defense) ---
+# --- 1. 頁面設定 ---
 st.set_page_config(
     page_title="PetMatch AI智慧寵心導航", 
     page_icon="🐾", 
@@ -21,7 +21,7 @@ st.set_page_config(
     }
 )
 
-# ====== 🎨 CSS 終極隱藏 + 介面修復 (v16.0) ======
+# ====== 🎨 CSS 介面終極修復 + 🛡️ 強力隱藏模式 (v17.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -40,19 +40,21 @@ st.markdown("""
         background-color: #F9F7F2 !important;
     }
 
-    /* 2. 隱藏 Streamlit 預設介面 (Aggressive Mode) */
-    /* 隱藏右上角漢堡選單、GitHub icon、Deploy 按鈕 */
-    .stAppDeployButton, 
-    [data-testid="stToolbar"], 
-    [data-testid="stHeader"], 
-    header, 
-    .st-emotion-cache-12fmw14, 
-    .st-emotion-cache-1avcm0n,
-    div[class*="viewerBadge"] {
+    /* 2. 🛡️ 針對截圖中的右上角圖示進行強力隱藏 */
+    /* 隱藏 GitHub Fork 圖示 (Viewer Badge) */
+    .viewerBadge_container__1QSob,
+    [data-testid="stStatusWidget"],
+    .stAppDeployButton {
         display: none !important;
         visibility: hidden !important;
-        height: 0px !important;
         opacity: 0 !important;
+    }
+
+    /* 隱藏右上角漢堡選單 (Toolbar) */
+    [data-testid="stToolbar"], 
+    [data-testid="stHeader"] {
+        display: none !important;
+        visibility: hidden !important;
     }
     
     /* 隱藏頁尾 */
@@ -60,9 +62,9 @@ st.markdown("""
         display: none !important;
     }
     
-    /* 調整頂部留白 */
+    /* 調整頂部留白 (把內容往上推) */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 0rem !important;
     }
 
     /* 3. 通用文字顯色 */
@@ -110,13 +112,13 @@ st.markdown("""
     
     .stButton > button p, .stLinkButton > a { color: white !important; }
 
-    /* 5. 提示框文字 (修復深色模式看不見問題) */
+    /* 5. 提示框文字 */
     div[data-testid="stAlert"] p, div[data-testid="stAlert"] div {
         color: #000000 !important; 
         font-weight: 500;
     }
 
-    /* 6. 其他 UI 元件 */
+    /* 6. 其他 UI */
     .hero-container {
         background: linear-gradient(120deg, #e0f7fa 0%, #b2dfdb 100%);
         padding: 30px;
@@ -183,69 +185,82 @@ def load_hospitals():
 df_hospitals = load_hospitals()
 HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 
-# --- AI 核心 (🔥 v16.0 智慧切換模型版) ---
+# --- AI 核心 (🔥 v17.0：精準對應您的模型清單) ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY:
         return "⚠️ 請檢查 API Key", "low", "動物", "動物醫院"
     
-    # 定義模型優先順序：優先用強的，失敗用舊的
-    models_to_try = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+    # 🔥 修正：只使用您清單中確認存在的模型 (移除 gemini-1.5-flash)
+    models_to_try = [
+        'gemini-2.0-flash',       # 首選：最新快版
+        'gemini-2.0-flash-exp',   # 備用1：實驗版
+        'gemini-flash-latest'     # 備用2：通用最新版
+    ]
     
-    system_prompt = f"""
-    Role: PetMatch Triage System.
-    Task: Analyze input: "{user_input}"
-    Strict Output Rules:
-    1. Language: Traditional Chinese.
-    2. Format:
-    URGENCY: [HIGH/MEDIUM/LOW]
-    RESPONSE: [Advice within 100 words.]
-    ANIMAL_TYPE: [e.g., 爬蟲, 鳥類, 兔子]
-    SEARCH_KEYWORDS: [e.g., 爬蟲 動物醫院, 24H 急診]
-    """
-
+    # 重試邏輯：指數退避
+    max_retries = 3
+    retry_delay = 5 
+    
     for model_name in models_to_try:
-        try:
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel(model_name)
-            
-            response = model.generate_content(system_prompt)
-            text = response.text
-            
-            # 解析結果
-            urgency = "low"
-            if "URGENCY: HIGH" in text: urgency = "high"
-            elif "URGENCY: MEDIUM" in text: urgency = "medium"
-            
-            clean_reply = text.split("RESPONSE:")[-1].split("ANIMAL_TYPE:")[0].strip()
-            animal_type = "特寵"
-            if "ANIMAL_TYPE:" in text:
-                animal_type = text.split("ANIMAL_TYPE:")[-1].split("SEARCH_KEYWORDS:")[0].strip()
-            search_keywords = "動物醫院"
-            if "SEARCH_KEYWORDS:" in text:
-                search_keywords = text.split("SEARCH_KEYWORDS:")[-1].strip()
+        for attempt in range(max_retries):
+            try:
+                genai.configure(api_key=GOOGLE_API_KEY)
+                model = genai.GenerativeModel(model_name)
+                
+                system_prompt = f"""
+                Role: PetMatch Triage System.
+                Task: Analyze input: "{user_input}"
+                Strict Output Rules:
+                1. Language: Traditional Chinese.
+                2. Format:
+                URGENCY: [HIGH/MEDIUM/LOW]
+                RESPONSE: [Advice within 100 words.]
+                ANIMAL_TYPE: [e.g., 爬蟲, 鳥類, 兔子]
+                SEARCH_KEYWORDS: [e.g., 爬蟲 動物醫院, 24H 急診]
+                """
+                response = model.generate_content(system_prompt)
+                text = response.text
+                
+                # 解析結果
+                urgency = "low"
+                if "URGENCY: HIGH" in text: urgency = "high"
+                elif "URGENCY: MEDIUM" in text: urgency = "medium"
+                
+                clean_reply = text.split("RESPONSE:")[-1].split("ANIMAL_TYPE:")[0].strip()
+                animal_type = "特寵"
+                if "ANIMAL_TYPE:" in text:
+                    animal_type = text.split("ANIMAL_TYPE:")[-1].split("SEARCH_KEYWORDS:")[0].strip()
+                search_keywords = "動物醫院"
+                if "SEARCH_KEYWORDS:" in text:
+                    search_keywords = text.split("SEARCH_KEYWORDS:")[-1].strip()
 
-            return clean_reply, urgency, animal_type, search_keywords
-            
-        except Exception as e:
-            error_msg = str(e)
-            if "429" in error_msg:
-                # 如果這個模型爆了，等待一下，換下一個模型試試
-                time.sleep(2) 
-                continue
-            else:
-                # 其他錯誤直接回報
-                return f"連線錯誤 ({model_name})：{error_msg}", "low", "動物", "動物醫院"
+                return clean_reply, urgency, animal_type, search_keywords
+                
+            except Exception as e:
+                error_msg = str(e)
+                # 遇到 429 (流量限制)，等待後重試
+                if "429" in error_msg:
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                        continue
+                    else:
+                        # 這個模型重試多次都失敗，跳出內層迴圈，換下一個模型
+                        break 
+                elif "404" in error_msg:
+                    # 模型找不到，直接換下一個模型
+                    break
+                else:
+                    return f"連線錯誤 ({model_name})：{error_msg}", "low", "動物", "動物醫院"
 
-    # 如果所有模型都失敗
-    return "⚠️ 系統目前流量過大，請稍後再試 (All models busy).", "low", "動物", "動物醫院"
+    return "⚠️ 系統目前流量過載，所有模型皆繁忙，請稍後再試。", "low", "動物", "動物醫院"
 
 # --- 每日知識 ---
 def get_daily_tip():
     if not GOOGLE_API_KEY: return "請設定 API Key"
     try:
-        # 簡單請求使用最便宜的模型
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        model = genai.GenerativeModel('gemini-2.0-flash') 
         res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
         return res.text
     except:
@@ -278,7 +293,7 @@ with st.sidebar:
         <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v16.0 穩定隱私版")
+    st.caption("v17.0 最終相容修正版")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
@@ -286,6 +301,7 @@ tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區
 # --- TAB 1: 智能導航 ---
 with tab_home:
     
+    # 預設位置 (楠梓)
     if 'current_pos' not in st.session_state:
         st.session_state.current_pos = {"lat": 22.7268, "lon": 120.2975}
         st.session_state.location_name = "高雄市 (楠梓區)"
@@ -302,6 +318,7 @@ with tab_home:
             if 'gps_activated' not in st.session_state:
                 st.session_state.gps_activated = False
 
+            # 🔥 按鈕文字：📍 點擊啟用定位系統
             if st.button("📍 點擊啟用定位系統", type="primary", use_container_width=True):
                 st.session_state.gps_activated = True
                 st.rerun()
@@ -318,6 +335,7 @@ with tab_home:
                 else:
                     st.warning("📡 正在連線定位系統...")
             
+            # 手動切換
             with st.expander("🔧 定位不準？手動切換行政區"):
                 kaohsiung_coords = {
                     "楠梓區": {"lat": 22.7268, "lon": 120.2975},
@@ -359,8 +377,12 @@ with tab_home:
                     "桃源區": {"lat": 23.1593, "lon": 120.7634},
                     "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
                 }
-                manual_area = st.selectbox("👇 或直接選擇區域：", list(kaohsiung_coords.keys()))
+                manual_area = st.selectbox(
+                    "👇 或直接選擇區域：",
+                    list(kaohsiung_coords.keys())
+                )
                 
+                # 🔥 修正：確認按鈕使用 Primary 綠色樣式，確保可見
                 if st.button("確認切換區域", type="primary"):
                     st.session_state.current_pos = kaohsiung_coords[manual_area]
                     st.session_state.location_name = manual_area
@@ -368,6 +390,7 @@ with tab_home:
                     st.rerun()
 
         with col_map_view:
+            # 即時地圖
             m_preview = folium.Map(location=[st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], zoom_start=14)
             folium.Marker(
                 [st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], 
@@ -382,6 +405,7 @@ with tab_home:
                         radius=5, color="green", fill=True, fill_opacity=0.6,
                         tooltip=h['name']
                     ).add_to(m_preview)
+            
             components.html(m_preview._repr_html_(), height=250)
 
     # ====== 區塊 2: AI 諮詢 (下方) ======
@@ -409,6 +433,7 @@ with tab_home:
                     vip_hospitals = []
                     min_dist = 9999
                     
+                    # --- 邏輯：全搜 + 排序 ---
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
                             dist = calculate_distance(st.session_state.current_pos['lat'], st.session_state.current_pos['lon'], h['lat'], h['lon'])
@@ -440,6 +465,7 @@ with tab_home:
                     else:
                         st.info(f"ℹ️ 醫療建議類別：{animal_type}")
 
+                    # --- 推薦結果列表 ---
                     if display_hospitals:
                         st.subheader(f"🏆 距離最近的 {len(display_hospitals)} 家醫院")
                         for h in display_hospitals:
@@ -458,6 +484,7 @@ with tab_home:
                                     st.markdown(tags_html, unsafe_allow_html=True)
                                 with c2:
                                     st.write("")
+                                    # ✅ 修正：Google Maps 官方導航連結 (Universal Link)
                                     link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("") 
@@ -465,6 +492,7 @@ with tab_home:
                         st.warning(f"⚠️ 資料庫中暫無 **{animal_type}** 相關醫院。")
 
                     st.markdown("#### 沒找到合適的？")
+                    # ✅ 修正：Google Maps 搜尋連結
                     gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary", use_container_width=True)
 
