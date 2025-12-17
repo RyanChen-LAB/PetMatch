@@ -21,7 +21,7 @@ st.set_page_config(
     }
 )
 
-# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v19.0) ======
+# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v21.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -185,15 +185,16 @@ def load_hospitals():
 df_hospitals = load_hospitals()
 HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 
-# --- AI Core (🔥 v19.0: Session State Model Tracking) ---
+# --- AI Core (🔥 v21.0: Removed 1.5-flash, Added Valid Models) ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY:
         return "⚠️ 請檢查 API Key (尚未設定)", "low", "動物", "動物醫院"
     
+    # 🔥 關鍵修正：只使用您清單中確認存在的模型
     models_to_try = [
-        'gemini-2.0-flash',       
-        'gemini-1.5-flash',
-        'gemini-2.0-flash-exp'
+        'gemini-2.0-flash',       # 首選
+        'gemini-2.0-flash-exp',   # 備用1
+        'gemini-flash-latest'     # 備用2 (通用指針，通常會指向可用的 Flash 版本)
     ]
     
     system_prompt = f"""
@@ -220,7 +221,7 @@ def get_gemini_response(user_input):
                 
             text = response.text
             
-            # 🔥 成功連線後，更新目前使用的模型名稱到 Session State
+            # 成功後更新狀態
             st.session_state['active_model'] = model_name
             
             # Parse response
@@ -242,21 +243,25 @@ def get_gemini_response(user_input):
             error_msg = str(e)
             print(f"Model {model_name} failed: {error_msg}")
             
-            if "429" in error_msg or "404" in error_msg:
+            if "429" in error_msg: # Quota limit
+                time.sleep(2)
+                continue
+            if "404" in error_msg: # Model not found
                 continue 
             
             time.sleep(1)
             continue
 
     st.session_state['active_model'] = "連線失敗"
-    return "⚠️ 系統目前流量過載，無法連線 AI。請直接搜尋下方醫院。", "high", "動物", "24H 動物醫院"
+    return "⚠️ 系統目前流量過載 (API Quota)，無法連線 AI。請直接搜尋下方醫院。", "high", "動物", "24H 動物醫院"
 
-# --- Daily Tip ---
+# --- Daily Tip (🔥 v21.0: Updated Model) ---
 def get_daily_tip():
     if not GOOGLE_API_KEY: return "請設定 API Key"
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        # 🔥 改用 gemini-flash-latest，避免 1.5-flash 404 錯誤
+        model = genai.GenerativeModel('gemini-flash-latest') 
         res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
         return res.text
     except:
@@ -274,7 +279,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Sidebar (🔥 新增模型顯示)
+# Sidebar
 with st.sidebar:
     st.markdown("### ℹ️ 系統狀態")
     if GOOGLE_API_KEY:
@@ -282,13 +287,11 @@ with st.sidebar:
     else:
         st.error("⚠️ 未偵測到 API Key")
     
-    # 初始化 active_model
     if 'active_model' not in st.session_state:
         st.session_state['active_model'] = "等待連線..."
 
     st.markdown("---")
     
-    # 🔥 顯示目前 AI 模型與資料庫狀態
     st.markdown(f"""
     <div class="stat-box" style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
         <small style="color:#666 !important;">正在使用模型</small><br>
@@ -299,7 +302,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    st.caption("v19.0 系統狀態顯示版")
+    st.caption("v21.0 模型修正版")
 
 # Tabs
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
