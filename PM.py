@@ -21,7 +21,7 @@ st.set_page_config(
     }
 )
 
-# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v25.0) ======
+# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v26.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -185,21 +185,48 @@ def load_hospitals():
 df_hospitals = load_hospitals()
 HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 
-# --- AI Core (🔥 v25.0: 嚴格對應您的模型清單) ---
-def get_gemini_response(user_input):
+# --- 🔥 新增：AI 連線檢測函式 (快速Ping) ---
+def check_api_connection():
+    """啟動時快速測試哪個模型可用"""
     if not GOOGLE_API_KEY:
-        return "⚠️ 請檢查 API Key (尚未設定)", "low", "動物", "動物醫院"
+        return "⚠️ 無 API Key"
     
-    # 🔥 依據您的清單，設定優先順序
-    # 1. gemini-2.0-flash (最穩定主力)
-    # 2. gemini-2.5-flash (新版備援)
-    # 3. gemini-flash-latest (保底)
-    models_to_try = [
-        'gemini-2.0-flash',       
-        'gemini-2.5-flash',   
-        'gemini-flash-latest'     
+    # 根據您的清單，選出最可能成功的模型
+    test_models = [
+        'gemini-2.0-flash', 
+        'gemini-2.0-flash-lite-preview-02-05', # 新加入：輕量預覽版 (通常很快)
+        'gemini-flash-latest', 
+        'gemini-pro-latest'
     ]
     
+    genai.configure(api_key=GOOGLE_API_KEY)
+    
+    for model_name in test_models:
+        try:
+            # 傳送極短訊息測試連線
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content("Hi")
+            if response and response.text:
+                return model_name # 找到可用的就回傳
+        except:
+            continue # 失敗就換下一個
+            
+    return "❌ 連線失敗 (請重試)"
+
+# --- AI Core (🔥 v26.0: 使用檢測到的模型) ---
+def get_gemini_response(user_input):
+    if not GOOGLE_API_KEY:
+        return "⚠️ 請檢查 API Key", "low", "動物", "動物醫院"
+    
+    # 如果還沒檢測過，先檢測一次
+    current_model = st.session_state.get('active_model', 'gemini-2.0-flash')
+    
+    # 如果上次檢測是失敗的，再試一次備用清單
+    if "失敗" in current_model or "等待" in current_model:
+        models_to_try = ['gemini-2.0-flash', 'gemini-flash-latest']
+    else:
+        models_to_try = [current_model, 'gemini-flash-latest'] # 優先用上次成功的
+
     system_prompt = f"""
     Role: PetMatch Triage System.
     Task: Analyze input: "{user_input}"
@@ -216,18 +243,14 @@ def get_gemini_response(user_input):
         try:
             genai.configure(api_key=GOOGLE_API_KEY)
             model = genai.GenerativeModel(model_name)
-            
             response = model.generate_content(system_prompt)
             
-            if not response.text:
-                raise ValueError("Empty response")
-                
+            if not response.text: raise ValueError("Empty")
             text = response.text
             
-            # 🔥 成功！更新狀態
+            # 更新成功狀態
             st.session_state['active_model'] = model_name
             
-            # Parse response
             urgency = "low"
             if "URGENCY: HIGH" in text: urgency = "high"
             elif "URGENCY: MEDIUM" in text: urgency = "medium"
@@ -243,48 +266,29 @@ def get_gemini_response(user_input):
             return clean_reply, urgency, animal_type, search_keywords
             
         except Exception as e:
-            error_msg = str(e)
-            print(f"Model {model_name} failed: {error_msg}")
-            
-            # 如果是 Quota (429) 或 NotFound (404)，直接換下一個模型
-            if "429" in error_msg: 
-                time.sleep(1) # 稍微等一下
-                continue 
-            if "404" in error_msg:
-                continue 
-            
-            time.sleep(1)
+            print(f"Error {model_name}: {e}")
+            if "429" in str(e): time.sleep(2)
             continue
 
-    st.session_state['active_model'] = "⚠️ 流量管制模式 (離線)"
-    fallback_keywords = "動物醫院 24H 急診"
-    return "⚠️ 系統目前流量過載，無法連線 AI。請直接搜尋下方醫院。", "high", "動物", fallback_keywords
+    st.session_state['active_model'] = "連線逾時"
+    return "⚠️ 系統忙碌中，請直接參考下方醫院。", "high", "動物", "24H 動物醫院"
 
-# --- Daily Tip (🔥 v25.0: 啟動即連線) ---
+# --- Daily Tip (使用檢測到的模型) ---
 def get_daily_tip():
     if not GOOGLE_API_KEY: return "請設定 API Key"
     
-    # 🔥 網頁一打開就測試 gemini-2.0-flash
+    # 優先使用 session state 中的模型
+    model_name = st.session_state.get('active_model', 'gemini-2.0-flash')
+    if "失敗" in model_name or "等待" in model_name:
+        model_name = 'gemini-flash-latest' # 保底
+
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        model_name = 'gemini-2.0-flash'
         model = genai.GenerativeModel(model_name) 
         res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
-        
-        # 成功更新狀態
-        st.session_state['active_model'] = model_name
         return res.text
     except:
-        # 如果 2.0 失敗，試試看 latest
-        try:
-            model_name = 'gemini-flash-latest'
-            model = genai.GenerativeModel(model_name)
-            res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
-            st.session_state['active_model'] = model_name
-            return res.text
-        except:
-            st.session_state['active_model'] = "連線異常 (離線)"
-            return "🐢 陸龜其實很喜歡曬太陽喔！(離線知識)"
+        return "🐢 陸龜其實很喜歡曬太陽喔！"
 
 # ====================
 # 🖥️ Main Interface
@@ -306,13 +310,13 @@ with st.sidebar:
     else:
         st.error("⚠️ 未偵測到 API Key")
     
-    # 初始化
-    if 'active_model' not in st.session_state:
-        st.session_state['active_model'] = "連線檢測中..."
+    # 🔥 初始化並執行快速連線檢查
+    if 'active_model' not in st.session_state or st.session_state['active_model'] == "等待連線...":
+        with st.spinner("正在尋找可用線路..."):
+            st.session_state['active_model'] = check_api_connection()
 
     st.markdown("---")
     
-    # 動態顯示模型狀態
     status_color = "#2A9D8F" if "gemini" in st.session_state['active_model'] else "#E76F51"
     
     st.markdown(f"""
@@ -325,7 +329,12 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    st.caption("v25.0 絕對相容版")
+    # 🔥 手動重試按鈕
+    if st.button("🔄 重試連線"):
+        st.session_state['active_model'] = check_api_connection()
+        st.rerun()
+    
+    st.caption("v26.0 強制連線版")
 
 # Tabs
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
