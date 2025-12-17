@@ -5,68 +5,118 @@ import folium
 import streamlit.components.v1 as components
 from streamlit_js_eval import get_geolocation 
 from math import radians, cos, sin, asin, sqrt
-import time # ✅ 新增：用於連線重試的計時器
+import time
+import random
 
-# --- 1. 頁面設定 ---
-st.set_page_config(page_title="PetMatch AI智慧寵心導航", page_icon="🐾", layout="wide")
+# --- 1. 頁面設定 (First Line of Defense) ---
+st.set_page_config(
+    page_title="PetMatch AI智慧寵心導航", 
+    page_icon="🐾", 
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
 
-# ====== 🎨 CSS 介面終極修復 (基於 v10.2 優化) ======
+# ====== 🎨 CSS 終極隱藏 + 介面修復 (v16.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
     
-    /* 1. 強制定義淺色主題變數 */
+    /* 1. 全域變數 */
     :root {
         --primary-color: #2A9D8F;
         --background-color: #F9F7F2;
-        --secondary-background-color: #F0F2F6;
         --text-color: #264653;
         --font: "Noto Sans TC", sans-serif;
     }
 
-    /* 2. 強制全域背景與文字顏色 */
     html, body, [class*="css"], .stApp {
         font-family: 'Noto Sans TC', sans-serif;
         color: #264653 !important;
         background-color: #F9F7F2 !important;
     }
 
-    /* 3. 強制通用文字顯色 */
-    .stMarkdown p, .stMarkdown span, .stMarkdown div, 
-    h1, h2, h3, h4, h5, h6, 
-    .stText, .stHtml, .stCaption {
+    /* 2. 隱藏 Streamlit 預設介面 (Aggressive Mode) */
+    /* 隱藏右上角漢堡選單、GitHub icon、Deploy 按鈕 */
+    .stAppDeployButton, 
+    [data-testid="stToolbar"], 
+    [data-testid="stHeader"], 
+    header, 
+    .st-emotion-cache-12fmw14, 
+    .st-emotion-cache-1avcm0n,
+    div[class*="viewerBadge"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        opacity: 0 !important;
+    }
+    
+    /* 隱藏頁尾 */
+    footer {
+        display: none !important;
+    }
+    
+    /* 調整頂部留白 */
+    .block-container {
+        padding-top: 1rem !important;
+    }
+
+    /* 3. 通用文字顯色 */
+    .stMarkdown p, h1, h2, h3, h4, h5, h6, .stText, .stHtml, .stCaption {
         color: #264653 !important;
     }
 
-    /* 4. Toggle 開關與 Checkbox 文字 */
-    label[data-testid="stWidgetLabel"] p {
-        color: #264653 !important;
-        font-weight: 700;
-        font-size: 1.1rem;
+    /* 4. 按鈕樣式 */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
+        color: white !important;
+        border: none;
+        border-radius: 15px;
+        padding: 18px 24px;
+        font-size: 1.2rem !important;
+        font-weight: 900 !important;
+        width: 100%;
+        box-shadow: 0 6px 0 #1A6B63, 0 12px 15px rgba(0,0,0,0.2);
+        margin-bottom: 15px;
+    }
+    .stButton > button[kind="primary"]:active {
+        transform: translateY(6px);
+        box-shadow: 0 0 0 #1A6B63;
     }
     
-    /* 5. 提示框 (Success/Warning) 文字 */
+    .stLinkButton > a[kind="secondary"] {
+        background: linear-gradient(to bottom, #E76F51, #D65A3F) !important;
+        color: white !important;
+        border: none;
+        border-radius: 15px;
+        padding: 18px 24px;
+        font-size: 1.2rem !important;
+        font-weight: 900 !important;
+        width: 100%;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+        box-shadow: 0 6px 0 #A83E26, 0 12px 15px rgba(0,0,0,0.2);
+        margin-top: 10px;
+    }
+    .stLinkButton > a[kind="secondary"]:active {
+        transform: translateY(6px);
+        box-shadow: 0 0 0 #A83E26;
+    }
+    
+    .stButton > button p, .stLinkButton > a { color: white !important; }
+
+    /* 5. 提示框文字 (修復深色模式看不見問題) */
     div[data-testid="stAlert"] p, div[data-testid="stAlert"] div {
         color: #000000 !important; 
         font-weight: 500;
     }
 
-    /* 6. 摺疊選單標題 */
-    .streamlit-expanderHeader p {
-        color: #264653 !important;
-        font-weight: 600;
-    }
-
-    /* 7. 分頁標籤文字 */
-    button[data-baseweb="tab"] div p {
-        color: #264653 !important;
-        font-weight: 700 !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        border-bottom-color: #2A9D8F !important;
-    }
-
-    /* 8. Hero Header */
+    /* 6. 其他 UI 元件 */
     .hero-container {
         background: linear-gradient(120deg, #e0f7fa 0%, #b2dfdb 100%);
         padding: 30px;
@@ -82,89 +132,19 @@ st.markdown("""
         font-weight: 800; 
         margin: 0; 
         color: #264653 !important; 
-        text-shadow: none;
     }
     .hero-subtitle { 
         font-size: 1.1rem; 
-        opacity: 1; 
         margin-top: 8px; 
         font-weight: 700; 
         color: #2A9D8F !important; 
-        letter-spacing: 1px; 
-    }
-
-    /* 9. 3D 按鈕樣式 */
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(to bottom, #2A9D8F, #21867a) !important;
-        color: white !important;
-        border: none;
-        border-radius: 15px;
-        padding: 18px 24px;
-        font-size: 1.2rem !important;
-        font-weight: 900 !important;
-        width: 100%;
-        box-shadow: 0 6px 0 #1A6B63, 0 12px 15px rgba(0,0,0,0.2);
-        transition: all 0.1s ease;
-        margin-bottom: 15px;
-    }
-    .stButton > button[kind="primary"]:active {
-        transform: translateY(6px);
-        box-shadow: 0 0 0 #1A6B63, 0 2px 5px rgba(0,0,0,0.2);
-    }
-    /* 搜尋按鈕 (橘紅色 3D) */
-    .stLinkButton > a[kind="secondary"] {
-        background: linear-gradient(to bottom, #E76F51, #D65A3F) !important;
-        color: white !important;
-        border: none;
-        border-radius: 15px;
-        padding: 18px 24px;
-        font-size: 1.2rem !important;
-        font-weight: 900 !important;
-        width: 100%;
-        text-align: center;
-        text-decoration: none;
-        display: block;
-        box-shadow: 0 6px 0 #A83E26, 0 12px 15px rgba(0,0,0,0.2);
-        transition: all 0.1s ease;
-        margin-top: 10px;
-    }
-    .stLinkButton > a[kind="secondary"]:active {
-        transform: translateY(6px);
-        box-shadow: 0 0 0 #A83E26, 0 2px 5px rgba(0,0,0,0.2);
-    }
-    /* 按鈕文字強制白 */
-    .stButton > button p, .stLinkButton > a { color: white !important; }
-
-    /* 10. 卡片與氣泡 */
-    div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
-        background-color: white !important;
-        border-radius: 15px;
-        padding: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-    .stChatMessage {
-        background-color: white !important;
-        border-radius: 15px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    .stChatMessage p { color: #333 !important; }
-    
-    .stat-box small { color: #666 !important; }
-    .stat-box b { color: #2A9D8F !important; }
-    
-    .step-header {
-        font-size: 1.3rem;
-        font-weight: bold;
-        color: #2A9D8F !important;
-        margin-bottom: 10px;
-        border-bottom: 2px solid #E0E0E0;
-        padding-bottom: 5px;
     }
     
-    /* 隱藏開發者選單 (Optional, 保留您的設定) */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    button[data-baseweb="tab"] div p { color: #264653 !important; font-weight: 700 !important; }
+    button[data-baseweb="tab"][aria-selected="true"] { border-bottom-color: #2A9D8F !important; }
+    
+    .stChatMessage { background-color: white !important; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .step-header { font-size: 1.3rem; font-weight: bold; color: #2A9D8F !important; margin-bottom: 10px; border-bottom: 2px solid #E0E0E0; padding-bottom: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -203,42 +183,35 @@ def load_hospitals():
 df_hospitals = load_hospitals()
 HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 
-# --- AI 核心 (🔥 強化連線穩定版) ---
+# --- AI 核心 (🔥 v16.0 智慧切換模型版) ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY:
         return "⚠️ 請檢查 API Key", "low", "動物", "動物醫院"
     
-    # 🔥 重試機制：針對 429 錯誤進行指數退避 (Exponential Backoff)
-    max_retries = 3
-    retry_delay = 5 # 初始等待 5 秒
+    # 定義模型優先順序：優先用強的，失敗用舊的
+    models_to_try = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
     
-    for attempt in range(max_retries):
+    system_prompt = f"""
+    Role: PetMatch Triage System.
+    Task: Analyze input: "{user_input}"
+    Strict Output Rules:
+    1. Language: Traditional Chinese.
+    2. Format:
+    URGENCY: [HIGH/MEDIUM/LOW]
+    RESPONSE: [Advice within 100 words.]
+    ANIMAL_TYPE: [e.g., 爬蟲, 鳥類, 兔子]
+    SEARCH_KEYWORDS: [e.g., 爬蟲 動物醫院, 24H 急診]
+    """
+
+    for model_name in models_to_try:
         try:
             genai.configure(api_key=GOOGLE_API_KEY)
+            model = genai.GenerativeModel(model_name)
             
-            # 🔥 確認使用 gemini-2.0-flash (您帳號支援的模型)
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            
-            system_prompt = f"""
-            Role: PetMatch Triage System.
-            Task: Analyze input: "{user_input}"
-            Strict Output Rules:
-            1. Language: Traditional Chinese.
-            2. Format:
-            URGENCY: [HIGH/MEDIUM/LOW]
-            RESPONSE: [Advice within 100 words.]
-            ANIMAL_TYPE: [e.g., 爬蟲, 鳥類, 兔子]
-            SEARCH_KEYWORDS: [e.g., 爬蟲 動物醫院, 24H 急診]
-
-            Example:
-            URGENCY: HIGH
-            RESPONSE: 建議立即送醫。
-            ANIMAL_TYPE: 爬蟲
-            SEARCH_KEYWORDS: 爬蟲專科 24H 急診
-            """
             response = model.generate_content(system_prompt)
             text = response.text
             
+            # 解析結果
             urgency = "low"
             if "URGENCY: HIGH" in text: urgency = "high"
             elif "URGENCY: MEDIUM" in text: urgency = "medium"
@@ -255,26 +228,24 @@ def get_gemini_response(user_input):
             
         except Exception as e:
             error_msg = str(e)
-            # 如果不是最後一次嘗試，且錯誤包含 429 (配額限制)，則等待後重試
-            if attempt < max_retries - 1:
-                if "429" in error_msg:
-                    time.sleep(retry_delay)
-                    retry_delay *= 2 # 下次等久一點 (5s -> 10s -> 20s)
-                    continue
-                else:
-                    return f"連線錯誤：{error_msg}", "low", "動物", "動物醫院"
+            if "429" in error_msg:
+                # 如果這個模型爆了，等待一下，換下一個模型試試
+                time.sleep(2) 
+                continue
             else:
-                # 最後一次也失敗，若是 429 則顯示友善訊息
-                if "429" in error_msg:
-                    return "⚠️ 系統目前繁忙 (Google AI 流量管制)，請稍後再試。", "low", "動物", "動物醫院"
-                return f"連線錯誤：{error_msg}", "low", "動物", "動物醫院"
+                # 其他錯誤直接回報
+                return f"連線錯誤 ({model_name})：{error_msg}", "low", "動物", "動物醫院"
 
-# --- 每日知識 (同步更新模型) ---
+    # 如果所有模型都失敗
+    return "⚠️ 系統目前流量過大，請稍後再試 (All models busy).", "low", "動物", "動物醫院"
+
+# --- 每日知識 ---
 def get_daily_tip():
     if not GOOGLE_API_KEY: return "請設定 API Key"
     try:
+        # 簡單請求使用最便宜的模型
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-2.0-flash') # 🔥 同步更新
+        model = genai.GenerativeModel('gemini-1.5-flash') 
         res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
         return res.text
     except:
@@ -307,7 +278,7 @@ with st.sidebar:
         <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家專科醫院</small>
     </div>
     """, unsafe_allow_html=True)
-    st.caption("v15.1 穩定強化版")
+    st.caption("v16.0 穩定隱私版")
 
 # 主畫面分頁
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
@@ -315,7 +286,6 @@ tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區
 # --- TAB 1: 智能導航 ---
 with tab_home:
     
-    # 預設位置 (楠梓)
     if 'current_pos' not in st.session_state:
         st.session_state.current_pos = {"lat": 22.7268, "lon": 120.2975}
         st.session_state.location_name = "高雄市 (楠梓區)"
@@ -332,7 +302,6 @@ with tab_home:
             if 'gps_activated' not in st.session_state:
                 st.session_state.gps_activated = False
 
-            # 🔥 按鈕文字修正：📍 點擊啟用定位系統
             if st.button("📍 點擊啟用定位系統", type="primary", use_container_width=True):
                 st.session_state.gps_activated = True
                 st.rerun()
@@ -349,7 +318,6 @@ with tab_home:
                 else:
                     st.warning("📡 正在連線定位系統...")
             
-            # 手動切換
             with st.expander("🔧 定位不準？手動切換行政區"):
                 kaohsiung_coords = {
                     "楠梓區": {"lat": 22.7268, "lon": 120.2975},
@@ -391,12 +359,8 @@ with tab_home:
                     "桃源區": {"lat": 23.1593, "lon": 120.7634},
                     "那瑪夏區": {"lat": 23.2393, "lon": 120.6970}
                 }
-                manual_area = st.selectbox(
-                    "👇 或直接選擇區域：",
-                    list(kaohsiung_coords.keys())
-                )
+                manual_area = st.selectbox("👇 或直接選擇區域：", list(kaohsiung_coords.keys()))
                 
-                # 🔥 修正：確認按鈕使用 Primary 綠色樣式，確保可見
                 if st.button("確認切換區域", type="primary"):
                     st.session_state.current_pos = kaohsiung_coords[manual_area]
                     st.session_state.location_name = manual_area
@@ -404,7 +368,6 @@ with tab_home:
                     st.rerun()
 
         with col_map_view:
-            # 即時地圖
             m_preview = folium.Map(location=[st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], zoom_start=14)
             folium.Marker(
                 [st.session_state.current_pos["lat"], st.session_state.current_pos["lon"]], 
@@ -419,7 +382,6 @@ with tab_home:
                         radius=5, color="green", fill=True, fill_opacity=0.6,
                         tooltip=h['name']
                     ).add_to(m_preview)
-            
             components.html(m_preview._repr_html_(), height=250)
 
     # ====== 區塊 2: AI 諮詢 (下方) ======
@@ -447,7 +409,6 @@ with tab_home:
                     vip_hospitals = []
                     min_dist = 9999
                     
-                    # --- 邏輯：全搜 + 排序 ---
                     if HOSPITALS_DB:
                         for h in HOSPITALS_DB:
                             dist = calculate_distance(st.session_state.current_pos['lat'], st.session_state.current_pos['lon'], h['lat'], h['lon'])
@@ -479,7 +440,6 @@ with tab_home:
                     else:
                         st.info(f"ℹ️ 醫療建議類別：{animal_type}")
 
-                    # --- 推薦結果列表 ---
                     if display_hospitals:
                         st.subheader(f"🏆 距離最近的 {len(display_hospitals)} 家醫院")
                         for h in display_hospitals:
@@ -498,7 +458,6 @@ with tab_home:
                                     st.markdown(tags_html, unsafe_allow_html=True)
                                 with c2:
                                     st.write("")
-                                    # ✅ 修正：Google Maps 官方導航連結 (Universal Link)
                                     link = f"https://www.google.com/maps/dir/?api=1&destination={h['lat']},{h['lon']}"
                                     st.link_button("🚗 導航", link, type="primary")
                             st.write("") 
@@ -506,7 +465,6 @@ with tab_home:
                         st.warning(f"⚠️ 資料庫中暫無 **{animal_type}** 相關醫院。")
 
                     st.markdown("#### 沒找到合適的？")
-                    # ✅ 修正：Google Maps 搜尋連結
                     gmap_query = f"https://www.google.com/maps/search/?api=1&query={search_keywords}"
                     st.link_button(f"🔍 搜尋附近的「{search_keywords}」", gmap_query, type="secondary", use_container_width=True)
 
@@ -548,7 +506,7 @@ with tab_news:
             st.write("兔子 24 小時不吃草就有生命危險！學會判斷腸胃停滯的早期徵兆。")
             st.button("閱讀全文", key="b2")
 
-# --- TAB 3: 關於 (依照您的要求修改) ---
+# --- TAB 3: 關於 ---
 with tab_about:
     st.markdown("""
     ### 關於 PetMatch
