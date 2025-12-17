@@ -21,7 +21,7 @@ st.set_page_config(
     }
 )
 
-# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v26.0) ======
+# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v27.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -185,47 +185,51 @@ def load_hospitals():
 df_hospitals = load_hospitals()
 HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 
-# --- 🔥 新增：AI 連線檢測函式 (快速Ping) ---
+# --- 🔥 新增：AI 連線檢測函式 (包含 Lite 模型) ---
 def check_api_connection():
     """啟動時快速測試哪個模型可用"""
     if not GOOGLE_API_KEY:
-        return "⚠️ 無 API Key"
+        return None
     
-    # 根據您的清單，選出最可能成功的模型
+    # 優先嘗試輕量版 (Lite)，因為它最快且最不容易被限流
     test_models = [
+        'gemini-2.0-flash-lite-preview-02-05', 
         'gemini-2.0-flash', 
-        'gemini-2.0-flash-lite-preview-02-05', # 新加入：輕量預覽版 (通常很快)
-        'gemini-flash-latest', 
-        'gemini-pro-latest'
+        'gemini-flash-latest'
     ]
     
     genai.configure(api_key=GOOGLE_API_KEY)
     
     for model_name in test_models:
         try:
-            # 傳送極短訊息測試連線
             model = genai.GenerativeModel(model_name)
-            response = model.generate_content("Hi")
+            response = model.generate_content("Hi") # 極短 Ping
             if response and response.text:
-                return model_name # 找到可用的就回傳
+                return model_name # 成功！回傳模型名稱
         except:
-            continue # 失敗就換下一個
+            time.sleep(0.5) # 稍微間隔一下避免連續撞牆
+            continue 
             
-    return "❌ 連線失敗 (請重試)"
+    return None # 全部失敗
 
-# --- AI Core (🔥 v26.0: 使用檢測到的模型) ---
+# --- AI Core (🔥 v27.0: 使用檢測到的模型 + Lite 支援) ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY:
         return "⚠️ 請檢查 API Key", "low", "動物", "動物醫院"
     
-    # 如果還沒檢測過，先檢測一次
-    current_model = st.session_state.get('active_model', 'gemini-2.0-flash')
+    # 取得目前已確認可用的模型
+    active_model = st.session_state.get('active_model_name', None)
     
-    # 如果上次檢測是失敗的，再試一次備用清單
-    if "失敗" in current_model or "等待" in current_model:
-        models_to_try = ['gemini-2.0-flash', 'gemini-flash-latest']
+    # 如果還沒檢測到，或是檢測失敗，就用完整清單再試一次
+    if not active_model:
+        models_to_try = [
+            'gemini-2.0-flash-lite-preview-02-05', # Lite 首選
+            'gemini-2.0-flash', 
+            'gemini-flash-latest'
+        ]
     else:
-        models_to_try = [current_model, 'gemini-flash-latest'] # 優先用上次成功的
+        # 如果已經有成功的模型，就優先用它，後面掛一個備用
+        models_to_try = [active_model, 'gemini-flash-latest']
 
     system_prompt = f"""
     Role: PetMatch Triage System.
@@ -248,8 +252,9 @@ def get_gemini_response(user_input):
             if not response.text: raise ValueError("Empty")
             text = response.text
             
-            # 更新成功狀態
-            st.session_state['active_model'] = model_name
+            # 成功！更新全域狀態
+            st.session_state['active_model_name'] = model_name
+            st.session_state['connection_status'] = "connected"
             
             urgency = "low"
             if "URGENCY: HIGH" in text: urgency = "high"
@@ -267,20 +272,17 @@ def get_gemini_response(user_input):
             
         except Exception as e:
             print(f"Error {model_name}: {e}")
-            if "429" in str(e): time.sleep(2)
+            if "429" in str(e): time.sleep(1)
             continue
 
-    st.session_state['active_model'] = "連線逾時"
     return "⚠️ 系統忙碌中，請直接參考下方醫院。", "high", "動物", "24H 動物醫院"
 
-# --- Daily Tip (使用檢測到的模型) ---
+# --- Daily Tip ---
 def get_daily_tip():
     if not GOOGLE_API_KEY: return "請設定 API Key"
     
-    # 優先使用 session state 中的模型
-    model_name = st.session_state.get('active_model', 'gemini-2.0-flash')
-    if "失敗" in model_name or "等待" in model_name:
-        model_name = 'gemini-flash-latest' # 保底
+    # 嘗試使用 session state 中的模型，若無則用 Lite
+    model_name = st.session_state.get('active_model_name', 'gemini-2.0-flash-lite-preview-02-05')
 
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
@@ -302,39 +304,66 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Sidebar
+# Sidebar (🔥 v27.0: 整合式狀態顯示)
 with st.sidebar:
     st.markdown("### ℹ️ 系統狀態")
-    if GOOGLE_API_KEY:
-        st.success("✅ AI 系統連線正常")
-    else:
+    
+    # 1. 檢查 API Key 是否存在
+    if not GOOGLE_API_KEY:
         st.error("⚠️ 未偵測到 API Key")
-    
-    # 🔥 初始化並執行快速連線檢查
-    if 'active_model' not in st.session_state or st.session_state['active_model'] == "等待連線...":
-        with st.spinner("正在尋找可用線路..."):
-            st.session_state['active_model'] = check_api_connection()
+        status_html = """
+        <div class="stat-box" style="text-align:center; padding:10px; background:#FFEEBEE; border-radius:10px; border: 2px solid #FFCDD2;">
+            <b style="color:#D32F2F;">❌ 系統未啟動</b><br>
+            <small>請先設定 Secrets</small>
+        </div>
+        """
+    else:
+        # 2. 如果 Key 存在，檢查連線狀態 (只在第一次或手動重試時執行)
+        if 'connection_status' not in st.session_state:
+            with st.spinner("正在連線 AI 腦袋..."):
+                connected_model = check_api_connection()
+                
+            if connected_model:
+                st.session_state['connection_status'] = "connected"
+                st.session_state['active_model_name'] = connected_model
+            else:
+                st.session_state['connection_status'] = "failed"
+                st.session_state['active_model_name'] = None
 
-    st.markdown("---")
+        # 3. 根據狀態顯示整合資訊框
+        if st.session_state['connection_status'] == "connected":
+            status_html = f"""
+            <div class="stat-box" style="text-align:center; padding:15px; background:#E8F5E9; border-radius:10px; border: 2px solid #2A9D8F;">
+                <b style="color:#2A9D8F; font-size: 1.2rem;">✅ AI 連線正常</b><br>
+                <hr style="margin: 8px 0; border-color: #A5D6A7;">
+                <small style="color:#555;">使用模型：</small><br>
+                <code style="color:#1B5E20; font-weight:bold; font-size: 0.9rem;">{st.session_state['active_model_name']}</code>
+                <br><br>
+                <small style="color:#555;">已收錄醫院：</small> 
+                <b style="color:#2A9D8F;">{len(HOSPITALS_DB)}</b> <small>家</small>
+            </div>
+            """
+        else:
+            status_html = f"""
+            <div class="stat-box" style="text-align:center; padding:15px; background:#FFEBEE; border-radius:10px; border: 2px solid #EF5350;">
+                <b style="color:#C62828; font-size: 1.2rem;">❌ 連線不穩</b><br>
+                <small style="color:#666;">Google AI 暫時無回應</small>
+                <br><br>
+                <small style="color:#555;">已收錄醫院：</small> 
+                <b style="color:#2A9D8F;">{len(HOSPITALS_DB)}</b> <small>家</small>
+            </div>
+            """
+
+    st.markdown(status_html, unsafe_allow_html=True)
     
-    status_color = "#2A9D8F" if "gemini" in st.session_state['active_model'] else "#E76F51"
-    
-    st.markdown(f"""
-    <div class="stat-box" style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
-        <small style="color:#666 !important;">正在使用模型</small><br>
-        <code style="color:{status_color}; font-weight:bold;">{st.session_state['active_model']}</code>
-        <br><br>
-        <small style="color:#666 !important;">收錄專科醫院</small><br>
-        <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家</small>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # 🔥 手動重試按鈕
-    if st.button("🔄 重試連線"):
-        st.session_state['active_model'] = check_api_connection()
-        st.rerun()
-    
-    st.caption("v26.0 強制連線版")
+    # 4. 失敗時顯示重試按鈕
+    if GOOGLE_API_KEY and st.session_state.get('connection_status') == "failed":
+        if st.button("🔄 點此修復連線", type="primary"):
+            # 清除狀態，強制重跑
+            del st.session_state['connection_status']
+            st.rerun()
+            
+    st.caption("v27.0 整合狀態版")
 
 # Tabs
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
