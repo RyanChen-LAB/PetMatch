@@ -21,7 +21,7 @@ st.set_page_config(
     }
 )
 
-# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v23.0) ======
+# ====== 🎨 CSS 介面終極修復 + 🛡️ Aggressive Hiding (v25.0) ======
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@700&display=swap');
@@ -185,16 +185,19 @@ def load_hospitals():
 df_hospitals = load_hospitals()
 HOSPITALS_DB = df_hospitals.to_dict('records') if not df_hospitals.empty else []
 
-# --- AI Core (🔥 v23.0: 移除所有 1.5 模型) ---
+# --- AI Core (🔥 v25.0: 嚴格對應您的模型清單) ---
 def get_gemini_response(user_input):
     if not GOOGLE_API_KEY:
         return "⚠️ 請檢查 API Key (尚未設定)", "low", "動物", "動物醫院"
     
-    # 🔥 關鍵修正：只使用 2.0 與 latest，完全排除 1.5
+    # 🔥 依據您的清單，設定優先順序
+    # 1. gemini-2.0-flash (最穩定主力)
+    # 2. gemini-2.5-flash (新版備援)
+    # 3. gemini-flash-latest (保底)
     models_to_try = [
-        'gemini-2.0-flash',       # 首選
-        'gemini-2.0-flash-exp',   # 備用1
-        'gemini-flash-latest'     # 備用2 (Google 會自動導向最新的可用 Flash)
+        'gemini-2.0-flash',       
+        'gemini-2.5-flash',   
+        'gemini-flash-latest'     
     ]
     
     system_prompt = f"""
@@ -221,7 +224,7 @@ def get_gemini_response(user_input):
                 
             text = response.text
             
-            # 成功後更新狀態
+            # 🔥 成功！更新狀態
             st.session_state['active_model'] = model_name
             
             # Parse response
@@ -243,32 +246,45 @@ def get_gemini_response(user_input):
             error_msg = str(e)
             print(f"Model {model_name} failed: {error_msg}")
             
-            # 遇到 429 (流量限制)，等待後重試
-            if "429" in error_msg:
-                time.sleep(2)
-                continue
-            # 遇到 404 (找不到模型)，直接換下一個
-            if "404" in error_msg: 
+            # 如果是 Quota (429) 或 NotFound (404)，直接換下一個模型
+            if "429" in error_msg: 
+                time.sleep(1) # 稍微等一下
+                continue 
+            if "404" in error_msg:
                 continue 
             
             time.sleep(1)
             continue
 
-    st.session_state['active_model'] = "⚠️ 流量管制模式"
+    st.session_state['active_model'] = "⚠️ 流量管制模式 (離線)"
     fallback_keywords = "動物醫院 24H 急診"
-    return "⚠️ Google AI 系統目前因流量過大暫時忙碌。已為您切換至「直接搜尋模式」，請參考下方推薦醫院。", "high", "動物", fallback_keywords
+    return "⚠️ 系統目前流量過載，無法連線 AI。請直接搜尋下方醫院。", "high", "動物", fallback_keywords
 
-# --- Daily Tip (🔥 v23.0: 移除 1.5) ---
+# --- Daily Tip (🔥 v25.0: 啟動即連線) ---
 def get_daily_tip():
     if not GOOGLE_API_KEY: return "請設定 API Key"
+    
+    # 🔥 網頁一打開就測試 gemini-2.0-flash
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        # 🔥 改用 gemini-flash-latest，這是最安全的選擇
-        model = genai.GenerativeModel('gemini-flash-latest') 
+        model_name = 'gemini-2.0-flash'
+        model = genai.GenerativeModel(model_name) 
         res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
+        
+        # 成功更新狀態
+        st.session_state['active_model'] = model_name
         return res.text
     except:
-        return "🐢 陸龜其實很喜歡曬太陽喔！"
+        # 如果 2.0 失敗，試試看 latest
+        try:
+            model_name = 'gemini-flash-latest'
+            model = genai.GenerativeModel(model_name)
+            res = model.generate_content("給一個關於特殊寵物(爬蟲/鳥/兔)的有趣冷知識，50字內，繁體中文，開頭加上emoji")
+            st.session_state['active_model'] = model_name
+            return res.text
+        except:
+            st.session_state['active_model'] = "連線異常 (離線)"
+            return "🐢 陸龜其實很喜歡曬太陽喔！(離線知識)"
 
 # ====================
 # 🖥️ Main Interface
@@ -290,22 +306,26 @@ with st.sidebar:
     else:
         st.error("⚠️ 未偵測到 API Key")
     
+    # 初始化
     if 'active_model' not in st.session_state:
-        st.session_state['active_model'] = "等待連線..."
+        st.session_state['active_model'] = "連線檢測中..."
 
     st.markdown("---")
+    
+    # 動態顯示模型狀態
+    status_color = "#2A9D8F" if "gemini" in st.session_state['active_model'] else "#E76F51"
     
     st.markdown(f"""
     <div class="stat-box" style="text-align:center; padding:10px; background:#EFEFEF; border-radius:10px;">
         <small style="color:#666 !important;">正在使用模型</small><br>
-        <code style="color:#2A9D8F; font-weight:bold;">{st.session_state['active_model']}</code>
+        <code style="color:{status_color}; font-weight:bold;">{st.session_state['active_model']}</code>
         <br><br>
         <small style="color:#666 !important;">收錄專科醫院</small><br>
         <b style="font-size:1.5rem; color:#2A9D8F !important;">{len(HOSPITALS_DB)}</b> <small style="color:#666 !important;">家</small>
     </div>
     """, unsafe_allow_html=True)
     
-    st.caption("v23.0 純淨新世代版")
+    st.caption("v25.0 絕對相容版")
 
 # Tabs
 tab_home, tab_news, tab_about = st.tabs(["🏥 智能導航", "📰 衛教專區", "ℹ️ 關於我們"])
